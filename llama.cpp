@@ -53,7 +53,7 @@
 #pragma warning(disable: 4244 4267) // possible loss of data
 #endif
 
-#define LLAMA_USE_SCRATCH
+// #define LLAMA_USE_SCRATCH
 #define LLAMA_MAX_SCRATCH_BUFFERS 16
 
 // available llama models

@@ -384,7 +384,7 @@ extern "C" {
     };
 
 
-//     ggml object
+    // ggml object
     struct ggml_object {
         size_t offs;
         size_t size;
@@ -411,7 +411,6 @@ extern "C" {
         // compute data
         enum ggml_op op;
 
-        bool is_intermediate;
         bool is_param;
 
         struct ggml_tensor * grad;
@@ -552,31 +551,11 @@ extern "C" {
     GGML_API size_t  ggml_get_mem_size       (const struct ggml_context * ctx);
     GGML_API size_t  ggml_get_max_tensor_size(const struct ggml_context * ctx);
 
-    GGML_API struct ggml_tensor * ggml_new_intermediate_tensor_impl(
-            struct ggml_context * ctx,
-            enum   ggml_type type,
-            int    n_dims,
-            const int64_t *ne,
-            void *data);
-
-    GGML_API struct ggml_tensor * ggml_new_immediate_tensor_impl(
-            struct ggml_context * ctx,
-            enum   ggml_type type,
-            int    n_dims,
-            const int64_t* ne,
-            void*  data);
-
-    GGML_API struct ggml_tensor * ggml_new_immediate_tensor(
-            struct ggml_context * ctx,
-            enum   ggml_type type,
-            int    n_dims,
-            const int64_t* ne);
-
     GGML_API struct ggml_tensor * ggml_new_tensor(
             struct ggml_context * ctx,
             enum   ggml_type type,
             int    n_dims,
-            const int64_t * ne);
+            const int64_t *ne);
 
     GGML_API struct ggml_tensor * ggml_new_tensor_1d(
             struct ggml_context * ctx,
@@ -610,7 +589,7 @@ extern "C" {
     GGML_API struct ggml_tensor * ggml_dup_tensor (struct ggml_context * ctx, const struct ggml_tensor * src);
     GGML_API struct ggml_tensor * ggml_view_tensor(struct ggml_context * ctx, const struct ggml_tensor * src);
 
-//     GGML_API struct ggml_tensor * ggml_get_tensor(struct ggml_context * ctx, const char * name);
+    GGML_API struct ggml_tensor * ggml_get_tensor(struct ggml_context * ctx, const char * name);
 
     GGML_API struct ggml_tensor * ggml_set_zero(struct ggml_tensor * tensor);
     GGML_API struct ggml_tensor * ggml_set_i32 (struct ggml_tensor * tensor, int32_t value);
