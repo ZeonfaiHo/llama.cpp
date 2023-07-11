@@ -472,6 +472,8 @@ endif()
 add_library(ggml OBJECT
             ggml.c
             ggml.h
+            ggml_cgraph_plan_memory.cpp
+            ggml_cgraph_plan_memory.h
             ${GGML_SOURCES_CUDA}
             ${GGML_SOURCES_OPENCL}
             ${GGML_SOURCES_METAL}

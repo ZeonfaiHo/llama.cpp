@@ -1613,6 +1613,8 @@ static bool llama_eval_internal(
     // run the computation
     ggml_build_forward_expand(&gf, cur);
 
+    ggml_set_output_tensor(cur);
+
 #ifdef GGML_USE_METAL
     if (lctx.ctx_metal && N == 1) {
         ggml_metal_set_n_cb     (lctx.ctx_metal, n_threads);

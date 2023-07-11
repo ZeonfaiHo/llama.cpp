@@ -169,6 +169,8 @@
 //
 //
 
+#include "ggml_cgraph_plan_memory.h"
+
 #ifdef GGML_SHARED
 #    if defined(_WIN32) && !defined(__MINGW32__)
 #        ifdef GGML_BUILD
@@ -398,9 +400,14 @@ extern "C" {
 
     // n-dimensional tensor
     struct ggml_tensor {
+        // basic
         enum ggml_type    type;
+        char name[GGML_MAX_NAME];
         enum ggml_backend backend;
+        struct ggml_context * ctx;
 
+        // size
+        size_t data_size;
         int     n_dims;
         int64_t ne[GGML_MAX_DIMS]; // number of elements
         size_t  nb[GGML_MAX_DIMS]; // stride in bytes:
@@ -408,15 +415,23 @@ extern "C" {
                                    // nb[1] = nb[0]   * ne[0] + padding
                                    // nb[i] = nb[i-1] * ne[i-1]
 
-        // compute data
-        enum ggml_op op;
+        // data
+        void * data;
 
+        // compute graph
         bool is_intermediate;
-        bool is_param;
-
-        struct ggml_tensor * grad;
+        enum ggml_op op;
         struct ggml_tensor * src0;
         struct ggml_tensor * src1;
+
+        // inplace
+        struct ggml_tensor * share_from;
+        size_t share_offset;
+
+
+        // bp
+        bool is_param;
+        struct ggml_tensor * grad;
         struct ggml_tensor * opt[GGML_MAX_OPT];
 
         // performance
@@ -424,13 +439,8 @@ extern "C" {
         int64_t perf_cycles;
         int64_t perf_time_us;
 
-        void * data;
-
-        char name[GGML_MAX_NAME];
-
         void * extra; // extra things e.g. for ggml-cuda.cu
-
-        char padding[8];
+        char padding[16];
     };
 
     static const size_t GGML_TENSOR_SIZE = sizeof(struct ggml_tensor);
@@ -460,6 +470,9 @@ extern "C" {
         int     perf_runs;
         int64_t perf_cycles;
         int64_t perf_time_us;
+
+        void * mem_buffer;
+        size_t buf_size;
     };
 
     // scratch buffer
@@ -557,7 +570,8 @@ extern "C" {
             enum   ggml_type type,
             int    n_dims,
             const int64_t *ne,
-            void *data);
+            struct ggml_tensor *share_from,
+            size_t share_offset);
 
     GGML_API struct ggml_tensor * ggml_new_immediate_tensor_impl(
             struct ggml_context * ctx,
@@ -1319,6 +1333,8 @@ extern "C" {
             struct ggml_tensor  * tensor);
 
     GGML_API void ggml_build_forward_expand(struct ggml_cgraph * cgraph, struct ggml_tensor * tensor);
+
+    GGML_API void ggml_set_output_tensor(struct ggml_tensor * tensor);
 
     GGML_API struct ggml_cgraph ggml_build_forward (struct ggml_tensor * tensor);
     GGML_API struct ggml_cgraph ggml_build_backward(struct ggml_context * ctx, struct ggml_cgraph * gf, bool keep);
