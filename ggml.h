@@ -419,7 +419,7 @@ extern "C" {
         void * data;
 
         // compute graph
-        bool is_intermediate;
+        bool is_deferred;
         enum ggml_op op;
         struct ggml_tensor * src0;
         struct ggml_tensor * src1;

@@ -1414,7 +1414,7 @@ static bool llama_eval_internal(
             offload_func_kq(Qcur);
             ggml_set_name(Qcur, "Qcur");
 
-            // store key and value to memory
+            // 将当前token的kv值保存到kv_self里面；kv_self中的k和v被拍扁成了一维
             {
                 // compute the transposed [N, n_embd] V matrix
 

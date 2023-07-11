@@ -4536,7 +4536,7 @@ struct ggml_tensor * ggml_new_intermediate_tensor_impl(
 
         /*.data         =*/ NULL,
 
-        /* is_intermediate = */ true,
+        /* is_deferred  = */ true,
         /*.op           =*/ GGML_OP_NONE,
         /*.src0         =*/ NULL,
         /*.src1         =*/ NULL,
@@ -4632,7 +4632,7 @@ struct ggml_tensor * ggml_new_immediate_tensor_impl(
 
         /*.data         =*/ (data == NULL && !ctx->no_alloc) ? (void *)(result + 1) : data,
 
-        /* is_intermediate = */ false,
+        /* is_deferred  = */ false,
         /*.op           =*/ GGML_OP_NONE,
         /*.src0         =*/ NULL,
         /*.src1         =*/ NULL,
@@ -15818,7 +15818,7 @@ static void ggml_visit_parents(struct ggml_cgraph * cgraph, struct ggml_tensor *
 }
 
 void ggml_visit_output(struct ggml_tensor * tensor) {
-    tensor->is_intermediate = false;
+    tensor->is_deferred = false;
     if (tensor->share_from != NULL) {
         ggml_visit_output(tensor->share_from);
         tensor->data = tensor->share_from->data + tensor->share_offset;

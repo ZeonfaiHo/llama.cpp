@@ -16,12 +16,22 @@ struct ggml_mem_buffer_info {
 
 
 void ggml_cgraph_plan_memory(struct ggml_cgraph *cgraph) {
+    // 为与常量共享空间的张量分配空间
+    for (int i = 0; i < cgraph->n_nodes; i++) {
+        ggml_tensor * node = cgraph->nodes[i];
+        if (node->share_from != NULL 
+            && node->share_from->data != NULL) {
+            node->data = node->share_from->data + node->share_offset;
+            node->is_deferred = false;
+        }
+    }
+
     int n_mem_buffer = 0;
     std::unordered_map<ggml_tensor *, int> tensor_to_mem_buffer_id;
 
     for (int i = 0; i < cgraph->n_nodes; i++) {
         ggml_tensor *node = cgraph->nodes[i];
-        if (node->is_intermediate) {
+        if (node->is_deferred) {
             if (node->share_from == NULL) {
                 tensor_to_mem_buffer_id.insert(
                     std::pair<ggml_tensor *, int>(node, n_mem_buffer));
@@ -44,18 +54,18 @@ void ggml_cgraph_plan_memory(struct ggml_cgraph *cgraph) {
 
     for (int i = 0; i < cgraph->n_nodes; i++) {
         ggml_tensor *node = cgraph->nodes[i];
-        if (node->is_intermediate) {
+        if (node->is_deferred) {
             int id = tensor_to_mem_buffer_id[node];
             buf_infos[id].size = node->data_size;
             buf_infos[id].begin = std::min(buf_infos[id].begin, i);
             buf_infos[id].end = std::max(buf_infos[id].end, i);
         }
 
-        if (node->src0 && node->src0->is_intermediate) {
+        if (node->src0 && node->src0->is_deferred) {
             int src0_id = tensor_to_mem_buffer_id[node->src0];
             buf_infos[src0_id].end = i;
         }
-        if (node->src1 && node->src1->is_intermediate) {
+        if (node->src1 && node->src1->is_deferred) {
             int src1_id = tensor_to_mem_buffer_id[node->src1];
             buf_infos[src1_id].end = i;
         }
@@ -106,7 +116,7 @@ void ggml_cgraph_plan_memory(struct ggml_cgraph *cgraph) {
     
     for (int i = 0; i < cgraph->n_nodes; i++) {
         ggml_tensor *node = cgraph->nodes[i];
-        if (node->is_intermediate) {
+        if (node->is_deferred) {
             if (node->share_from != NULL) {
                 node->data = node->share_from->data + node->share_offset;
             }
@@ -114,19 +124,34 @@ void ggml_cgraph_plan_memory(struct ggml_cgraph *cgraph) {
                 const int id = tensor_to_mem_buffer_id[node];
                 node->data = cgraph->mem_buffer + buf_infos[id].offset;
             }
+            node->is_deferred = false;
         }
     }
 }
 
 void ggml_cgraph_plan_memory_naive(ggml_cgraph * cgraph) {
+    size_t size_needed = 0;
     for (int i = 0; i < cgraph->n_nodes; i++) {
         ggml_tensor *node = cgraph->nodes[i];
-        if (node->is_intermediate) {
+        if (node->is_deferred && node->share_from == NULL) {
+            size_needed += node->data_size;
+        }
+    }
+
+    cgraph->mem_buffer = malloc(size_needed);
+    cgraph->buf_size = size_needed;
+
+    size_t end = 0;
+
+    for (int i = 0; i < cgraph->n_nodes; i++) {
+        ggml_tensor *node = cgraph->nodes[i];
+        if (node->is_deferred) {
             if (node->share_from != NULL) {
                 node->data = node->share_from->data + node->share_offset;
             }
             else {
-                node->data = malloc(node->data_size);
+                node->data = cgraph->mem_buffer + end;
+                end += node->data_size;
             }
         }
     }
