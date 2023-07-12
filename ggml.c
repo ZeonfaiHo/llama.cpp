@@ -5037,7 +5037,7 @@ struct ggml_tensor * ggml_format_name(struct ggml_tensor * tensor, const char * 
 
 struct ggml_tensor * ggml_view_tensor(
         struct ggml_context * ctx,
-        const struct ggml_tensor * src) {
+        struct ggml_tensor * src) {
     struct ggml_tensor * result = ggml_new_intermediate_tensor_impl(ctx, src->type, src->n_dims, src->ne, src, 0);
     ggml_format_name(result, "%s (view)", src->name);
 
@@ -15821,13 +15821,13 @@ void ggml_visit_output(struct ggml_tensor * tensor) {
     tensor->is_deferred = false;
     if (tensor->share_from != NULL) {
         ggml_visit_output(tensor->share_from);
-        tensor->data = tensor->share_from->data + tensor->share_offset;
+        tensor->data = (char *) tensor->share_from->data + tensor->share_offset;
     }
     else {
         if (tensor->data == NULL) {
             struct ggml_context * ctx = tensor->ctx;
             GGML_ASSERT(ctx->end + tensor->data_size <= ctx->mem_size);
-            tensor->data = ctx->mem_buffer + ctx->end;
+            tensor->data = (char *) ctx->mem_buffer + ctx->end;
             ctx->end += tensor->data_size;
         }
     }
@@ -15871,6 +15871,8 @@ struct ggml_cgraph ggml_build_forward(struct ggml_tensor * tensor) {
         /*.perf_runs    =*/ 0,
         /*.perf_cycles  =*/ 0,
         /*.perf_time_us =*/ 0,
+        /*.mem_buff     =*/ NULL,
+        /*.buf_size     =*/ 0,
     };
 
     ggml_build_forward_impl(&result, tensor, false);

@@ -16,7 +16,7 @@ static const std::map<std::string, std::vector<llama_token>> & k_tests()
         { "нещо на Български",  { 1,    821,   4851,    665,   1386,  29713,   1305, }, },
     };
     return _k_tests;
-};
+}
 
 int main(int argc, char **argv) {
     if (argc < 2) {
