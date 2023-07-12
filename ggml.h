@@ -565,7 +565,7 @@ extern "C" {
     GGML_API size_t  ggml_get_mem_size       (const struct ggml_context * ctx);
     GGML_API size_t  ggml_get_max_tensor_size(const struct ggml_context * ctx);
 
-    GGML_API struct ggml_tensor * ggml_new_intermediate_tensor_impl(
+    GGML_API struct ggml_tensor * ggml_new_deferred_tensor_impl(
             struct ggml_context * ctx,
             enum   ggml_type type,
             int    n_dims,
@@ -611,6 +611,32 @@ extern "C" {
             int64_t ne2);
 
     GGML_API struct ggml_tensor * ggml_new_tensor_4d(
+            struct ggml_context * ctx,
+            enum   ggml_type type,
+            int64_t ne0,
+            int64_t ne1,
+            int64_t ne2,
+            int64_t ne3);
+
+    GGML_API struct ggml_tensor * ggml_new_deferred_tensor_1d(
+            struct ggml_context * ctx,
+            enum   ggml_type type,
+            int64_t ne0);
+
+    GGML_API struct ggml_tensor * ggml_new_deferred_tensor_2d(
+            struct ggml_context * ctx,
+            enum   ggml_type type,
+            int64_t ne0,
+            int64_t ne1);
+
+    GGML_API struct ggml_tensor * ggml_new_deferred_tensor_3d(
+            struct ggml_context * ctx,
+            enum   ggml_type type,
+            int64_t ne0,
+            int64_t ne1,
+            int64_t ne2);
+
+    GGML_API struct ggml_tensor * ggml_new_deferred_tensor_4d(
             struct ggml_context * ctx,
             enum   ggml_type type,
             int64_t ne0,
@@ -1341,8 +1367,9 @@ extern "C" {
 
     // ggml_graph_plan() has to be called before ggml_graph_compute()
     // when plan.work_size > 0, caller must allocate memory for plan.work_data
-    GGML_API struct ggml_cplan ggml_graph_plan   (struct ggml_cgraph * cgraph, int n_threads /*= GGML_DEFAULT_N_THREADS*/);
+    GGML_API struct ggml_cplan ggml_graph_plan_workspace   (struct ggml_cgraph * cgraph, int n_threads /*= GGML_DEFAULT_N_THREADS*/);
     GGML_API              void ggml_graph_compute(struct ggml_cgraph * cgraph, struct ggml_cplan * cplan);
+    GGML_API              void ggml_graph_compute_new(struct ggml_cgraph * cgraph, int n_threads);
     GGML_API              void ggml_graph_reset  (struct ggml_cgraph * cgraph);
 
     // same as ggml_graph_compute() but the work data is allocated as a part of the context

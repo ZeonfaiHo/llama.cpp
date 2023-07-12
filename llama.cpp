@@ -84,7 +84,7 @@ void llama_nop(struct ggml_tensor * tensor) { // don't offload by default
 //
 
 static void ggml_graph_compute_helper(std::vector<uint8_t> & buf, ggml_cgraph * graph, int n_threads) {
-    struct ggml_cplan plan = ggml_graph_plan(graph, n_threads);
+    struct ggml_cplan plan = ggml_graph_plan_workspace(graph, n_threads);
 
     if (plan.work_size > 0) {
         buf.resize(plan.work_size);
@@ -1499,7 +1499,7 @@ static bool llama_eval_internal(
             // make V contiguous in memory to speed up the matmul, however we waste time on the copy
             // on M1 this is faster for the perplexity computation, but ~5% slower for the single-token generation
             // is there a better way?
-            struct ggml_tensor * V_cont = ggml_cpy(ctx0, V, ggml_new_tensor_3d(ctx0, kv_self.v->type, n_past + N, n_embd/n_head, n_head));
+            struct ggml_tensor * V_cont = ggml_cpy(ctx0, V, ggml_new_deferred_tensor_3d(ctx0, kv_self.v->type, n_past + N, n_embd/n_head, n_head));
             struct ggml_tensor * KQV = ggml_mul_mat(ctx0, V_cont, KQ_soft_max);
 #endif
 
@@ -1511,7 +1511,7 @@ static bool llama_eval_internal(
             // cur = KQV_merged.contiguous().view(n_embd, N)
             cur = ggml_cpy(ctx0,
                     KQV_merged,
-                    ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, N));
+                    ggml_new_deferred_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, N));
             offload_func_v(cur);
             ggml_set_name(cur, "KQV_merged_contiguous");
 
@@ -1640,7 +1640,8 @@ static bool llama_eval_internal(
         ggml_graph_compute_helper(lctx.work_buffer, &gf, n_threads);
     }
 #else
-    ggml_graph_compute_helper(lctx.work_buffer, &gf, n_threads);
+    // ggml_graph_compute_helper(lctx.work_buffer, &gf, n_threads);
+    ggml_graph_compute_new(&gf, n_threads);
 #endif
 
     if (cgraph_fname) {

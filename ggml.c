@@ -4482,7 +4482,7 @@ void ggml_scratch_load(struct ggml_context * ctx) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-struct ggml_tensor * ggml_new_intermediate_tensor_impl(
+struct ggml_tensor * ggml_new_deferred_tensor_impl(
         struct ggml_context * ctx,
         enum   ggml_type type,
         int    n_dims,
@@ -4686,12 +4686,12 @@ struct ggml_tensor * ggml_new_immediate_tensor(
     return ggml_new_immediate_tensor_impl(ctx, type, n_dims, ne, NULL);
 }
 
-struct ggml_tensor * ggml_new_intermediate_tensor(
+struct ggml_tensor * ggml_new_deferred_tensor(
         struct ggml_context * ctx,
         enum   ggml_type type,
         int    n_dims,
         const int64_t * ne) {
-    return ggml_new_intermediate_tensor_impl(ctx, type, n_dims, ne, NULL, 0);
+    return ggml_new_deferred_tensor_impl(ctx, type, n_dims, ne, NULL, 0);
 }
 
 struct ggml_tensor * ggml_new_tensor_1d(
@@ -4701,6 +4701,13 @@ struct ggml_tensor * ggml_new_tensor_1d(
     return ggml_new_immediate_tensor(ctx, type, 1, &ne0);
 }
 
+struct ggml_tensor * ggml_new_deferred_tensor_1d(
+        struct ggml_context * ctx,
+        enum   ggml_type type,
+        int64_t ne0) {
+    return ggml_new_deferred_tensor(ctx, type, 1, &ne0);
+}
+
 struct ggml_tensor * ggml_new_tensor_2d(
         struct ggml_context * ctx,
         enum   ggml_type type,
@@ -4708,6 +4715,15 @@ struct ggml_tensor * ggml_new_tensor_2d(
         int64_t ne1) {
     const int64_t ne[2] = { ne0, ne1 };
     return ggml_new_immediate_tensor(ctx, type, 2, ne);
+}
+
+struct ggml_tensor * ggml_new_deferred_tensor_2d(
+        struct ggml_context * ctx,
+        enum   ggml_type type,
+        int64_t ne0,
+        int64_t ne1) {
+    const int64_t ne[2] = { ne0, ne1 };
+    return ggml_new_deferred_tensor(ctx, type, 2, ne);
 }
 
 struct ggml_tensor * ggml_new_tensor_3d(
@@ -4720,6 +4736,16 @@ struct ggml_tensor * ggml_new_tensor_3d(
     return ggml_new_immediate_tensor(ctx, type, 3, ne);
 }
 
+struct ggml_tensor * ggml_new_deferred_tensor_3d(
+        struct ggml_context * ctx,
+        enum   ggml_type type,
+        int64_t ne0,
+        int64_t ne1,
+        int64_t ne2) {
+    const int64_t ne[3] = { ne0, ne1, ne2 };
+    return ggml_new_deferred_tensor(ctx, type, 3, ne);
+}
+
 struct ggml_tensor * ggml_new_tensor_4d(
         struct ggml_context * ctx,
         enum   ggml_type type,
@@ -4729,6 +4755,17 @@ struct ggml_tensor * ggml_new_tensor_4d(
         int64_t ne3) {
     const int64_t ne[4] = { ne0, ne1, ne2, ne3 };
     return ggml_new_immediate_tensor(ctx, type, 4, ne);
+}
+
+struct ggml_tensor * ggml_new_deferred_tensor_4d(
+        struct ggml_context * ctx,
+        enum   ggml_type type,
+        int64_t ne0,
+        int64_t ne1,
+        int64_t ne2,
+        int64_t ne3) {
+    const int64_t ne[4] = { ne0, ne1, ne2, ne3 };
+    return ggml_new_deferred_tensor(ctx, type, 4, ne);
 }
 
 struct ggml_tensor * ggml_new_i32(struct ggml_context * ctx, int32_t value) {
@@ -4756,7 +4793,7 @@ struct ggml_tensor * ggml_new_f32(struct ggml_context * ctx, float value) {
 }
 
 struct ggml_tensor * ggml_dup_tensor(struct ggml_context * ctx, const struct ggml_tensor * src) {
-    return ggml_new_intermediate_tensor_impl(ctx, src->type, src->n_dims, src->ne, NULL, 0);
+    return ggml_new_deferred_tensor_impl(ctx, src->type, src->n_dims, src->ne, NULL, 0);
 }
 
 struct ggml_tensor * ggml_set_zero(struct ggml_tensor * tensor) {
@@ -5038,7 +5075,7 @@ struct ggml_tensor * ggml_format_name(struct ggml_tensor * tensor, const char * 
 struct ggml_tensor * ggml_view_tensor(
         struct ggml_context * ctx,
         struct ggml_tensor * src) {
-    struct ggml_tensor * result = ggml_new_intermediate_tensor_impl(ctx, src->type, src->n_dims, src->ne, src, 0);
+    struct ggml_tensor * result = ggml_new_deferred_tensor_impl(ctx, src->type, src->n_dims, src->ne, src, 0);
     ggml_format_name(result, "%s (view)", src->name);
 
     result->nb[0] = src->nb[0];
@@ -5518,7 +5555,7 @@ struct ggml_tensor * ggml_sum_rows(
         ne[i] = a->ne[i];
     }
 
-    struct ggml_tensor * result = ggml_new_intermediate_tensor(ctx, a->type, a->n_dims, ne);
+    struct ggml_tensor * result = ggml_new_deferred_tensor(ctx, a->type, a->n_dims, ne);
 
     result->op   = GGML_OP_SUM_ROWS;
     result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
@@ -5541,7 +5578,7 @@ struct ggml_tensor * ggml_mean(
     }
 
     int64_t ne[GGML_MAX_DIMS] = { 1, a->ne[1], a->ne[2], a->ne[3] };
-    struct ggml_tensor * result = ggml_new_intermediate_tensor(ctx, GGML_TYPE_F32, a->n_dims, ne);
+    struct ggml_tensor * result = ggml_new_deferred_tensor(ctx, GGML_TYPE_F32, a->n_dims, ne);
 
     result->op   = GGML_OP_MEAN;
     result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
@@ -5565,7 +5602,7 @@ struct ggml_tensor * ggml_argmax(
     }
 
     int64_t ne[GGML_MAX_DIMS] = { a->ne[1], 1, 1, 1 };
-    struct ggml_tensor * result = ggml_new_intermediate_tensor(ctx, GGML_TYPE_I32, a->n_dims, ne);
+    struct ggml_tensor * result = ggml_new_deferred_tensor(ctx, GGML_TYPE_I32, a->n_dims, ne);
 
     result->op   = GGML_OP_ARGMAX;
     result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
@@ -5593,7 +5630,7 @@ struct ggml_tensor * ggml_repeat(
         return a;
     }
 
-    struct ggml_tensor * result = ggml_new_intermediate_tensor(ctx, a->type, b->n_dims, b->ne);
+    struct ggml_tensor * result = ggml_new_deferred_tensor(ctx, a->type, b->n_dims, b->ne);
 
     result->op   = GGML_OP_REPEAT;
     result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
@@ -5621,7 +5658,7 @@ struct ggml_tensor * ggml_repeat_back(
         return a;
     }
 
-    struct ggml_tensor * result = ggml_new_intermediate_tensor(ctx, a->type, b->n_dims, b->ne);
+    struct ggml_tensor * result = ggml_new_deferred_tensor(ctx, a->type, b->n_dims, b->ne);
 
     result->op   = GGML_OP_REPEAT_BACK;
     result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
@@ -6100,7 +6137,7 @@ struct ggml_tensor * ggml_mul_mat(
     }
 
     const int64_t ne[4] = { a->ne[1], b->ne[1], a->ne[2], b->ne[3] };
-    struct ggml_tensor * result = ggml_new_intermediate_tensor(ctx, GGML_TYPE_F32, MIN(a->n_dims, b->n_dims), ne);
+    struct ggml_tensor * result = ggml_new_deferred_tensor(ctx, GGML_TYPE_F32, MIN(a->n_dims, b->n_dims), ne);
 
     result->op   = GGML_OP_MUL_MAT;
     result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
@@ -6126,7 +6163,7 @@ struct ggml_tensor * ggml_out_prod(
     }
 
     const int64_t ne[4] = { a->ne[0], b->ne[0], a->ne[2], b->ne[3] };
-    struct ggml_tensor * result = ggml_new_intermediate_tensor(ctx, GGML_TYPE_F32, MIN(a->n_dims, b->n_dims), ne);
+    struct ggml_tensor * result = ggml_new_deferred_tensor(ctx, GGML_TYPE_F32, MIN(a->n_dims, b->n_dims), ne);
 
     result->op   = GGML_OP_OUT_PROD;
     result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
@@ -6377,7 +6414,7 @@ struct ggml_tensor * ggml_reshape(
         //GGML_ASSERT(false);
     }
 
-    struct ggml_tensor * result = ggml_new_intermediate_tensor_impl(ctx, a->type, b->n_dims, b->ne, a, 0);
+    struct ggml_tensor * result = ggml_new_deferred_tensor_impl(ctx, a->type, b->n_dims, b->ne, a, 0);
     ggml_format_name(result, "%s (reshaped)", a->name);
 
     result->op   = GGML_OP_RESHAPE;
@@ -6402,7 +6439,7 @@ struct ggml_tensor * ggml_reshape_1d(
     }
 
     const int64_t ne[1] = { ne0 };
-    struct ggml_tensor * result = ggml_new_intermediate_tensor_impl(ctx, a->type, 1, ne, a, 0);
+    struct ggml_tensor * result = ggml_new_deferred_tensor_impl(ctx, a->type, 1, ne, a, 0);
     ggml_format_name(result, "%s (reshaped)", a->name);
 
     result->op   = GGML_OP_RESHAPE;
@@ -6428,7 +6465,7 @@ struct ggml_tensor * ggml_reshape_2d(
     }
 
     const int64_t ne[2] = { ne0, ne1 };
-    struct ggml_tensor * result = ggml_new_intermediate_tensor_impl(ctx, a->type, 2, ne, a, 0);
+    struct ggml_tensor * result = ggml_new_deferred_tensor_impl(ctx, a->type, 2, ne, a, 0);
     ggml_format_name(result, "%s (reshaped)", a->name);
 
     result->op   = GGML_OP_RESHAPE;
@@ -6455,7 +6492,7 @@ struct ggml_tensor * ggml_reshape_3d(
     }
 
     const int64_t ne[3] = { ne0, ne1, ne2 };
-    struct ggml_tensor * result = ggml_new_intermediate_tensor_impl(ctx, a->type, 3, ne, a, 0);
+    struct ggml_tensor * result = ggml_new_deferred_tensor_impl(ctx, a->type, 3, ne, a, 0);
     ggml_format_name(result, "%s (reshaped)", a->name);
 
     result->op   = GGML_OP_RESHAPE;
@@ -6484,7 +6521,7 @@ struct ggml_tensor * ggml_reshape_4d(
     }
 
     const int64_t ne[4] = { ne0, ne1, ne2, ne3 };
-    struct ggml_tensor * result = ggml_new_intermediate_tensor_impl(ctx, a->type, 4, ne, a, 0);
+    struct ggml_tensor * result = ggml_new_deferred_tensor_impl(ctx, a->type, 4, ne, a, 0);
     ggml_format_name(result, "%s (reshaped)", a->name);
 
     result->op   = GGML_OP_RESHAPE;
@@ -6509,7 +6546,7 @@ struct ggml_tensor * ggml_view_1d(
         is_node = true;
     }
 
-    struct ggml_tensor * result = ggml_new_intermediate_tensor_impl(ctx, a->type, 1, &ne0, a, offset);
+    struct ggml_tensor * result = ggml_new_deferred_tensor_impl(ctx, a->type, 1, &ne0, a, offset);
     ggml_format_name(result, "%s (view)", a->name);
 
     ggml_scratch_save(ctx);
@@ -6547,7 +6584,7 @@ struct ggml_tensor * ggml_view_2d(
 
     const int64_t ne[GGML_MAX_DIMS] = { ne0, ne1, 1, 1 };
 
-    struct ggml_tensor * result = ggml_new_intermediate_tensor_impl(ctx, a->type, 2, ne, a, offset);
+    struct ggml_tensor * result = ggml_new_deferred_tensor_impl(ctx, a->type, 2, ne, a, offset);
     ggml_format_name(result, "%s (view)", a->name);
 
     ggml_scratch_save(ctx);
@@ -6591,7 +6628,7 @@ struct ggml_tensor * ggml_view_3d(
 
     const int64_t ne[GGML_MAX_DIMS] = { ne0, ne1, ne2, 1 };
 
-    struct ggml_tensor * result = ggml_new_intermediate_tensor_impl(ctx, a->type, 3, ne, a, offset);
+    struct ggml_tensor * result = ggml_new_deferred_tensor_impl(ctx, a->type, 3, ne, a, offset);
     ggml_format_name(result, "%s (view)", a->name);
 
     ggml_scratch_save(ctx);
@@ -6637,7 +6674,7 @@ struct ggml_tensor * ggml_view_4d(
 
     const int64_t ne[GGML_MAX_DIMS] = { ne0, ne1, ne2, ne3 };
 
-    struct ggml_tensor * result = ggml_new_intermediate_tensor_impl(ctx, a->type, 4, ne, a, offset);
+    struct ggml_tensor * result = ggml_new_deferred_tensor_impl(ctx, a->type, 4, ne, a, offset);
     ggml_format_name(result, "%s (view)", a->name);
 
     ggml_scratch_save(ctx);
@@ -6833,7 +6870,7 @@ struct ggml_tensor * ggml_diag(
     }
 
     const int64_t ne[4] = { a->ne[0], a->ne[0], a->ne[2], a->ne[3] };
-    struct ggml_tensor * result = ggml_new_intermediate_tensor(ctx, a->type, MAX(a->n_dims, 2), ne);
+    struct ggml_tensor * result = ggml_new_deferred_tensor(ctx, a->type, MAX(a->n_dims, 2), ne);
 
     result->op   = GGML_OP_DIAG;
     result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
@@ -7205,7 +7242,7 @@ GGML_API struct ggml_tensor * ggml_conv_1d(
         ggml_calc_conv_output_size(b->ne[0], a->ne[0], s0, p0, d0),
         a->ne[2], 1, 1,
     };
-    struct ggml_tensor* result = ggml_new_intermediate_tensor(ctx, GGML_TYPE_F32, 2, ne);
+    struct ggml_tensor* result = ggml_new_deferred_tensor(ctx, GGML_TYPE_F32, 2, ne);
 
     ggml_scratch_save(ctx);
     struct ggml_tensor* c = ggml_new_tensor_1d(ctx, GGML_TYPE_I32, 3);
@@ -7250,7 +7287,7 @@ struct ggml_tensor* ggml_conv_2d(
         ggml_calc_conv_output_size(b->ne[1], a->ne[1], s1, p1, d1),
         a->ne[3], 1,
     };
-    struct ggml_tensor* result = ggml_new_intermediate_tensor(ctx, GGML_TYPE_F32, 4, ne);
+    struct ggml_tensor* result = ggml_new_deferred_tensor(ctx, GGML_TYPE_F32, 4, ne);
 
     ggml_scratch_save(ctx);
     struct ggml_tensor* c = ggml_new_tensor_1d(ctx, GGML_TYPE_I32, 6);
@@ -7301,7 +7338,7 @@ struct ggml_tensor * ggml_flash_attn(
     }
 
     //struct ggml_tensor * result = ggml_dup_tensor(ctx, q);
-    struct ggml_tensor * result = ggml_new_intermediate_tensor(ctx, GGML_TYPE_F32, 4, q->ne);
+    struct ggml_tensor * result = ggml_new_deferred_tensor(ctx, GGML_TYPE_F32, 4, q->ne);
 
     result->op   = GGML_OP_FLASH_ATTN;
     result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
@@ -7332,7 +7369,7 @@ struct ggml_tensor * ggml_flash_ff(
     }
 
     //struct ggml_tensor * result = ggml_dup_tensor(ctx, a);
-    struct ggml_tensor * result = ggml_new_intermediate_tensor(ctx, GGML_TYPE_F32, 4, a->ne);
+    struct ggml_tensor * result = ggml_new_deferred_tensor(ctx, GGML_TYPE_F32, 4, a->ne);
 
     result->op   = GGML_OP_FLASH_FF;
     result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
@@ -7396,7 +7433,7 @@ struct ggml_tensor * ggml_flash_attn_back(
     // note: v and gradv are actually transposed, i.e. v->ne[0] != D.
     int64_t ne[4] = {D,M+N+M,ne2,ne3};
 
-    struct ggml_tensor * result = ggml_new_intermediate_tensor(ctx, GGML_TYPE_F32, 4, ne);
+    struct ggml_tensor * result = ggml_new_deferred_tensor(ctx, GGML_TYPE_F32, 4, ne);
 
     result->op   = GGML_OP_FLASH_ATTN_BACK;
     result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
@@ -7435,7 +7472,7 @@ struct ggml_tensor * ggml_win_part(
 
     const int64_t ne[4] = { a->ne[0], w, w, np, };
 
-    struct ggml_tensor * result = ggml_new_intermediate_tensor(ctx, GGML_TYPE_F32, 4, ne);
+    struct ggml_tensor * result = ggml_new_deferred_tensor(ctx, GGML_TYPE_F32, 4, ne);
 
     ggml_scratch_save(ctx);
 
@@ -7474,7 +7511,7 @@ struct ggml_tensor * ggml_win_unpart(
     }
 
     const int64_t ne[4] = { a->ne[0], w0, h0, 1, };
-    struct ggml_tensor * result = ggml_new_intermediate_tensor(ctx, GGML_TYPE_F32, 3, ne);
+    struct ggml_tensor * result = ggml_new_deferred_tensor(ctx, GGML_TYPE_F32, 3, ne);
 
     ggml_scratch_save(ctx);
 
@@ -15794,7 +15831,7 @@ static void ggml_visit_parents(struct ggml_cgraph * cgraph, struct ggml_tensor *
         }
     }
 
-    if (node->op == GGML_OP_NONE && node->grad == NULL) {
+    if (node->op == GGML_OP_NONE && node->grad == NULL && !node->is_deferred) {
         // reached a leaf node, not part of the gradient graph (e.g. a constant)
         GGML_ASSERT(cgraph->n_leafs < GGML_MAX_NODES);
 
@@ -16168,7 +16205,7 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
     return 0;
 }
 
-struct ggml_cplan ggml_graph_plan(struct ggml_cgraph * cgraph, int n_threads) {
+struct ggml_cplan ggml_graph_plan_workspace(struct ggml_cgraph * cgraph, int n_threads) {
     if (n_threads <= 0) {
         n_threads = GGML_DEFAULT_N_THREADS;
     }
@@ -16507,8 +16544,6 @@ struct ggml_cplan ggml_graph_plan(struct ggml_cgraph * cgraph, int n_threads) {
 
 void ggml_graph_compute(struct ggml_cgraph * cgraph, struct ggml_cplan * cplan) {
 
-    ggml_cgraph_plan_memory(cgraph);
-
     {
         GGML_ASSERT(cplan);
         GGML_ASSERT(cplan->n_threads > 0);
@@ -16586,8 +16621,18 @@ void ggml_graph_compute(struct ggml_cgraph * cgraph, struct ggml_cplan * cplan) 
                 (double) perf_time_us_cur     / 1000.0,
                 (double) cgraph->perf_time_us / 1000.0 / cgraph->perf_runs);
     }
+}
+
+void ggml_graph_compute_new(struct ggml_cgraph * cgraph, int n_threads) {
+    struct ggml_cplan plan = ggml_graph_plan_workspace(cgraph, n_threads);
+    if (plan.work_size > 0) {
+        plan.work_data = malloc(plan.work_size);
+    }
+    ggml_cgraph_plan_memory(cgraph);
+    ggml_graph_compute(cgraph, &plan);
 
     free(cgraph->mem_buffer);
+    free(plan.work_data);
 }
 
 void ggml_graph_reset(struct ggml_cgraph * cgraph) {
@@ -16601,7 +16646,7 @@ void ggml_graph_reset(struct ggml_cgraph * cgraph) {
 }
 
 void ggml_graph_compute_with_ctx(struct ggml_context * ctx, struct ggml_cgraph * cgraph, int n_threads) {
-    struct ggml_cplan cplan = ggml_graph_plan(cgraph, n_threads);
+    struct ggml_cplan cplan = ggml_graph_plan_workspace(cgraph, n_threads);
 
     struct ggml_tensor * buf = ggml_new_tensor_1d(ctx, GGML_TYPE_I8, cplan.work_size);
     GGML_ASSERT(buf);
@@ -16981,7 +17026,7 @@ struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** 
                     nb[j] = nb_cur;
                 }
 
-                struct ggml_tensor * tensor = ggml_new_intermediate_tensor(*ctx_eval, (enum ggml_type) type, n_dims, ne);
+                struct ggml_tensor * tensor = ggml_new_deferred_tensor(*ctx_eval, (enum ggml_type) type, n_dims, ne);
 
                 tensor->op = (enum ggml_op) op;
 
@@ -17082,7 +17127,7 @@ struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** 
                         } break;
                     default:
                         {
-                            tensor = ggml_new_intermediate_tensor(*ctx_eval, (enum ggml_type) type, n_dims, ne);
+                            tensor = ggml_new_deferred_tensor(*ctx_eval, (enum ggml_type) type, n_dims, ne);
 
                             tensor->op = eop;
                         } break;
