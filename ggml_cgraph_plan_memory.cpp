@@ -73,6 +73,13 @@ void ggml_cgraph_plan_memory(ggml_cgraph *cgraph) {
             int src1_id = tensor_to_mem_buffer_id[node->src1];
             buf_infos[src1_id].end = i;
         }
+
+        for (int j = 0; j < GGML_MAX_OPT; j++) {
+            if (node->opt[j] != NULL) {
+                int src_id = tensor_to_mem_buffer_id[node->opt[j]];
+                buf_infos[src_id].end = i;
+            }
+        }
     }
 
     // 对buf_infos进行排序，以begin和end分别作为第一第二关键字

@@ -4540,13 +4540,13 @@ struct ggml_tensor * ggml_new_deferred_tensor_impl(
         /*.op           =*/ GGML_OP_NONE,
         /*.src0         =*/ NULL,
         /*.src1         =*/ NULL,
+        /*.opt          =*/ { NULL },
 
         /*.share_from   =*/ share_from,
         /*.share_offset =*/ share_offset,
 
         /*.is_param     =*/ false,
         /*.grad         =*/ NULL,
-        /*.opt          =*/ { NULL },
 
         /*.perf_runs    =*/ 0,
         /*.perf_cycles  =*/ 0,
@@ -4636,13 +4636,13 @@ struct ggml_tensor * ggml_new_immediate_tensor_impl(
         /*.op           =*/ GGML_OP_NONE,
         /*.src0         =*/ NULL,
         /*.src1         =*/ NULL,
+        /*.opt          =*/ { NULL },
 
         /*.share_from   =*/ NULL,
         /*.share_offset =*/ 0,
 
         /*.is_param     =*/ false,
         /*.grad         =*/ NULL,
-        /*.opt          =*/ { NULL },
         
         /*.perf_runs    =*/ 0,
         /*.perf_cycles  =*/ 0,

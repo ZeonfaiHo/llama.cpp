@@ -423,16 +423,15 @@ extern "C" {
         enum ggml_op op;
         struct ggml_tensor * src0;
         struct ggml_tensor * src1;
+        struct ggml_tensor * opt[GGML_MAX_OPT];
 
         // inplace
         struct ggml_tensor * share_from;
         size_t share_offset;
 
-
         // bp
         bool is_param;
         struct ggml_tensor * grad;
-        struct ggml_tensor * opt[GGML_MAX_OPT];
 
         // performance
         int     perf_runs;
