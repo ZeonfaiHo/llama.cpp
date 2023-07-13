@@ -641,7 +641,7 @@ struct llama_model_loader {
     void calc_sizes(size_t * ctx_size_p, size_t * mmapped_size_p) const {
         *ctx_size_p = *mmapped_size_p = 0;
         for (const llama_load_tensor & lt : tensors_map.tensors) {
-            *ctx_size_p += sizeof(struct ggml_tensor) + GGML_OBJECT_SIZE;
+            *ctx_size_p += sizeof(struct ggml_tensor);
             *(use_mmap ? mmapped_size_p : ctx_size_p) += lt.size;
         }
     }
@@ -797,7 +797,7 @@ static bool kv_cache_init(
     const int64_t n_mem      = n_layer*n_ctx;
     const int64_t n_elements = n_embd*n_mem;
 
-    cache.buf.resize(2u*n_elements*ggml_type_size(wtype) + 2u*MB);
+    cache.buf.resize(2 * n_elements * ggml_type_size(wtype) + 2u * GGML_TENSOR_SIZE);
     cache.n = 0;
 
     struct ggml_init_params params;
@@ -2664,10 +2664,10 @@ struct llama_context * llama_new_context_with_model(
         }
 
         // ctx->buf_compute.resize(MEM_REQ_EVAL().at(ctx->model.type));
-        ctx->buf_compute.resize(20 * 1024 * 1024);
+        ctx->buf_compute.resize(75 * 1024 * 1024); // 这里的100是估的
 
-        ctx->buf_scratch[0].resize(MEM_REQ_SCRATCH0().at(ctx->model.type));
-        ctx->buf_scratch[1].resize(MEM_REQ_SCRATCH1().at(ctx->model.type));
+        // ctx->buf_scratch[0].resize(MEM_REQ_SCRATCH0().at(ctx->model.type));
+        // ctx->buf_scratch[1].resize(MEM_REQ_SCRATCH1().at(ctx->model.type));
     }
 
 #ifdef GGML_USE_METAL
