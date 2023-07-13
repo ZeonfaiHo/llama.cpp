@@ -2664,7 +2664,7 @@ struct llama_context * llama_new_context_with_model(
         }
 
         // ctx->buf_compute.resize(MEM_REQ_EVAL().at(ctx->model.type));
-        ctx->buf_compute.resize(200 * 1024 * 1024);
+        ctx->buf_compute.resize(20 * 1024 * 1024);
 
         ctx->buf_scratch[0].resize(MEM_REQ_SCRATCH0().at(ctx->model.type));
         ctx->buf_scratch[1].resize(MEM_REQ_SCRATCH1().at(ctx->model.type));
