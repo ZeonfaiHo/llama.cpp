@@ -29,6 +29,8 @@ void ggml_cgraph_plan_memory(ggml_cgraph *cgraph) {
     int n_mem_buffer = 0;
     std::unordered_map<ggml_tensor *, int> tensor_to_mem_buffer_id;
 
+    size_t mem_sum = 0;
+
     for (int i = 0; i < cgraph->n_nodes; i++) {
         ggml_tensor *node = cgraph->nodes[i];
         if (node->is_deferred) {
@@ -36,6 +38,8 @@ void ggml_cgraph_plan_memory(ggml_cgraph *cgraph) {
                 tensor_to_mem_buffer_id.insert(
                     std::pair<ggml_tensor *, int>(node, n_mem_buffer));
                 n_mem_buffer++;
+
+                mem_sum += node->data_size;
             }
             else {
                 tensor_to_mem_buffer_id.insert(

@@ -25,8 +25,10 @@ struct gpt_params {
     uint32_t seed                           = -1;  // RNG seed
     int32_t n_threads                       = get_num_physical_cores();
     int32_t n_predict                       = -1;  // new tokens to predict
-    int32_t n_ctx                           = 512; // context size
+    int32_t n_ctx                           = 2048; // context size
+    // int32_t n_ctx                           = 512; // context size
     int32_t n_batch                         = 512; // batch size for prompt processing (must be >=32 to use BLAS)
+    // int32_t n_batch                         = 512; // batch size for prompt processing (must be >=32 to use BLAS)
     int32_t n_keep                          = 0;   // number of tokens to keep from initial prompt
     int32_t n_gpu_layers                    = 0;   // number of layers to store in VRAM
     int32_t main_gpu                        = 0;   // the GPU that is used for scratch and small tensors
@@ -36,12 +38,12 @@ struct gpt_params {
     // sampling parameters
     std::unordered_map<llama_token, float> logit_bias; // logit bias for specific tokens
     int32_t top_k             = 40;    // <= 0 to use vocab size
-    float   top_p             = 0.95f; // 1.0 = disabled
+    float   top_p             = 1.00f; // 1.0 = disabled
     float   tfs_z             = 1.00f; // 1.0 = disabled
     float   typical_p         = 1.00f; // 1.0 = disabled
     float   temp              = 0.00f; // 1.0 = disabled
     // float   temp              = 0.80f; // 1.0 = disabled
-    float   repeat_penalty    = 1.10f; // 1.0 = disabled
+    float   repeat_penalty    = 0.00f; // 1.0 = disabled
     int32_t repeat_last_n     = 64;    // last n tokens to penalize (0 = disable penalty, -1 = context size)
     float   frequency_penalty = 0.00f; // 0.0 = disabled
     float   presence_penalty  = 0.00f; // 0.0 = disabled

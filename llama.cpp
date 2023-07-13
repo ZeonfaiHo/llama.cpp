@@ -180,7 +180,8 @@ static const std::map<e_model, size_t> & VRAM_REQ_SCRATCH_PER_CONTEXT()
 // default hparams (LLaMA 7B)
 struct llama_hparams {
     uint32_t n_vocab = 32000;
-    uint32_t n_ctx   = 512;   // this is provided as user input?
+    uint32_t n_ctx   = 2048;   // this is provided as user input?
+    // uint32_t n_ctx   = 512;   // this is provided as user input?
     uint32_t n_embd  = 4096;
     uint32_t n_mult  = 256;
     uint32_t n_head  = 32;
@@ -2662,7 +2663,8 @@ struct llama_context * llama_new_context_with_model(
             ctx->embedding.resize(hparams.n_embd);
         }
 
-        ctx->buf_compute.resize(MEM_REQ_EVAL().at(ctx->model.type));
+        // ctx->buf_compute.resize(MEM_REQ_EVAL().at(ctx->model.type));
+        ctx->buf_compute.resize(200 * 1024 * 1024);
 
         ctx->buf_scratch[0].resize(MEM_REQ_SCRATCH0().at(ctx->model.type));
         ctx->buf_scratch[1].resize(MEM_REQ_SCRATCH1().at(ctx->model.type));
