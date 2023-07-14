@@ -12,10 +12,160 @@ struct ggml_mem_buffer_info {
     int begin;
     int end;
     size_t offset;
+    bool allocated;
 };
 
-
 void ggml_cgraph_plan_memory(ggml_cgraph *cgraph) {
+    // 为与常量共享空间的张量分配空间
+    for (int i = 0; i < cgraph->n_nodes; i++) {
+        ggml_tensor * node = cgraph->nodes[i];
+        if (node->share_from != NULL 
+            && node->share_from->data != NULL) {
+            node->data = (char *) node->share_from->data + node->share_offset;
+            node->is_deferred = false;
+        }
+    }
+
+    int n_mem_buffer = 0;
+    std::unordered_map<ggml_tensor *, int> tensor_to_mem_buffer_id;
+
+    size_t mem_sum = 0;
+
+    for (int i = 0; i < cgraph->n_nodes; i++) {
+        ggml_tensor *node = cgraph->nodes[i];
+        if (node->is_deferred) {
+            if (node->share_from == NULL) {
+                tensor_to_mem_buffer_id.insert(
+                    std::pair<ggml_tensor *, int>(node, n_mem_buffer));
+                n_mem_buffer++;
+
+                mem_sum += node->data_size;
+            }
+            else {
+                tensor_to_mem_buffer_id.insert(
+                    std::pair<ggml_tensor *, int>
+                    (node, tensor_to_mem_buffer_id[node->share_from]));
+            }
+        }
+    }
+
+    ggml_mem_buffer_info *buf_infos = new ggml_mem_buffer_info[n_mem_buffer];
+    for (int i = 0; i < n_mem_buffer; i++) {
+        buf_infos[i].id = i;
+        buf_infos[i].begin = (int) 1e9;
+        buf_infos[i].end = -1;
+        buf_infos[i].allocated = false;
+    } 
+
+    for (int i = 0; i < cgraph->n_nodes; i++) {
+        ggml_tensor *node = cgraph->nodes[i];
+        if (node->is_deferred) {
+            int id = tensor_to_mem_buffer_id[node];
+            buf_infos[id].size = node->data_size;
+            buf_infos[id].begin = std::min(buf_infos[id].begin, i);
+            buf_infos[id].end = std::max(buf_infos[id].end, i);
+        }
+
+        if (node->src0 && node->src0->is_deferred) {
+            int src0_id = tensor_to_mem_buffer_id[node->src0];
+            buf_infos[src0_id].end = i;
+        }
+        if (node->src1 && node->src1->is_deferred) {
+            int src1_id = tensor_to_mem_buffer_id[node->src1];
+            buf_infos[src1_id].end = i;
+        }
+
+        for (int j = 0; j < GGML_MAX_OPT; j++) {
+            if (node->opt[j] != NULL && node->opt[j]->is_deferred) {
+                int src_id = tensor_to_mem_buffer_id[node->opt[j]];
+                buf_infos[src_id].end = i;
+            }
+        }
+    }
+
+    // 对buf_infos进行排序，以持续时间作为第一关键字
+    std::sort(buf_infos, buf_infos + n_mem_buffer, [](const ggml_mem_buffer_info & a, const ggml_mem_buffer_info & b) {
+            return a.end - a.begin > b.end - b.begin;
+        });
+
+    size_t size_needed = 0;
+    size_t offset = 0;
+    
+    while (true) {
+        bool finished = true;
+        for (int i = 0; i < n_mem_buffer; i++) {
+            if (!buf_infos[i].allocated) {
+                finished = false;
+                break;
+            }
+        }
+
+        if (finished) break;
+
+        for (int i = 0; i < n_mem_buffer; i++) {
+            if (!buf_infos[i].allocated) {
+                bool conflict = false;
+
+                for (int j = 0; j < n_mem_buffer; j++) {
+                    if (buf_infos[j].allocated && 
+                        std::max(buf_infos[i].begin, buf_infos[j].begin) 
+                        <= 
+                        std::min(buf_infos[i].end, buf_infos[j].end) &&
+                        std::max(offset, buf_infos[j].offset)
+                        <
+                        std::min(offset + buf_infos[i].size,
+                                 buf_infos[j].offset + buf_infos[j].size)) {
+                        
+                        conflict = true;
+                        break;
+                    }
+                }
+
+                if (!conflict) {
+                    buf_infos[i].offset = offset;
+                    buf_infos[i].allocated = true;
+                    size_needed = std::max(size_needed, buf_infos[i].offset + buf_infos[i].size);
+                }
+            }
+        }
+
+        size_t next = (size_t)1e18;
+
+        for (int i = 0; i < n_mem_buffer; i++) {
+            size_t tmp = buf_infos[i].offset + buf_infos[i].size;
+            if (buf_infos[i].allocated && tmp > offset) {
+                next = std::min(next, tmp);
+            }
+        }
+
+        offset = next;
+    }
+
+    cgraph->mem_buffer = malloc(size_needed);
+    cgraph->buf_size = size_needed;
+
+    std::sort(buf_infos, buf_infos + n_mem_buffer, [](const ggml_mem_buffer_info & a, const ggml_mem_buffer_info & b) {
+            return a.id < b.id;
+        });
+    
+    for (int i = 0; i < cgraph->n_nodes; i++) {
+        ggml_tensor *node = cgraph->nodes[i];
+        if (node->is_deferred) {
+            if (node->share_from != NULL) {
+                node->data = (char *) node->share_from->data + node->share_offset;
+            }
+            else {
+                const int id = tensor_to_mem_buffer_id[node];
+                node->data = (char *) cgraph->mem_buffer + buf_infos[id].offset;
+            }
+            node->is_deferred = false;
+        }
+    }
+
+    delete[] buf_infos;
+}
+
+void ggml_cgraph_plan_memory_greedy(ggml_cgraph *cgraph) {
     // 为与常量共享空间的张量分配空间
     for (int i = 0; i < cgraph->n_nodes; i++) {
         ggml_tensor * node = cgraph->nodes[i];
