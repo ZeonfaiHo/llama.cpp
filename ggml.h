@@ -463,7 +463,7 @@ extern "C" {
 
         struct ggml_tensor * nodes[GGML_MAX_NODES];
         struct ggml_tensor * grads[GGML_MAX_NODES];
-        struct ggml_tensor * leafs[GGML_MAX_NODES];
+        struct ggml_tensor * leafs[1];
 
         // performance
         int     perf_runs;

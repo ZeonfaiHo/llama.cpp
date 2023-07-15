@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <algorithm>
 #include <set>
+#include <cmath>
+#include <unordered_set>
 
 struct ggml_mem_buffer_info {
     int id;
@@ -15,7 +17,155 @@ struct ggml_mem_buffer_info {
     bool allocated;
 };
 
+void add_ref_count(ggml_tensor * tensor, std::unordered_map<ggml_tensor *, int> ref_count) {
+    if (ref_count.find(tensor) != ref_count.end()) {
+        ref_count[tensor]++;
+    }
+    else {
+        ref_count[tensor] = 1;
+    }
+}
+
+
+void ggml_cgraph_schedule(ggml_cgraph * cgraph) {
+
+    const float alpha = 1.5;
+
+    const int n_nodes = cgraph->n_nodes;
+
+    std::unordered_map<ggml_tensor *, int> ref_count;
+    for (int i = 0; i < n_nodes; i++) {
+        const ggml_tensor * tensor = cgraph->nodes[i];
+        if (tensor->src0 != NULL) {
+            add_ref_count(tensor->src0, ref_count);
+        }
+        if (tensor->src1 != NULL) {
+            add_ref_count(tensor->src1, ref_count);
+        }
+        for (int j = 0; j < GGML_MAX_OPT; j++) {
+            if (tensor->opt[j] != NULL) {
+                add_ref_count(tensor->opt[j], ref_count);
+            }
+        }
+        // if (tensor->share_from != NULL) {
+        //     add_ref_count(tensor->share_from, ref_count);
+        // }
+    }
+
+    ggml_tensor **sch = new ggml_tensor * [n_nodes];
+    std::unordered_set<ggml_tensor *> scheduled;
+
+    for (int i = 0; i < n_nodes; i++) {
+        float best_benefit = -1e18;
+        ggml_tensor * choice = NULL;
+        for (int j = 0; j < n_nodes; j++) {
+            ggml_tensor * tensor = cgraph->nodes[j];
+            
+            if (scheduled.find(tensor) == scheduled.end()) {
+
+                bool can_schedule = true;
+                float benefit = 0;
+                
+                ggml_tensor * src;
+                
+                src = tensor->src0;
+                
+                if (src != NULL) {
+                    if (scheduled.find(src) == scheduled.end()) {
+                        can_schedule = false;
+                    }
+                    else {
+                        benefit += src->data_size / pow(alpha, ref_count[src]);
+                    }
+                }
+
+                src = tensor->src1;
+
+                if (src != NULL) {
+                    if (scheduled.find(src) == scheduled.end()) {
+                        can_schedule = false;
+                    }
+                    else {
+                        benefit += src->data_size / pow(alpha, ref_count[src]);
+                    }
+                }
+
+                for (int k = 0; k < GGML_MAX_OPT; k++) {
+                    if (tensor->opt[k] != NULL) {
+                        src = tensor->opt[k];
+
+                        if (src != NULL) {
+                            if (scheduled.find(src) == scheduled.end()) {
+                                can_schedule = false;
+                            }
+                            else {
+                                benefit += src->data_size / pow(alpha, ref_count[src]);
+                            }
+                        }
+                    }
+                }
+
+                // src = tensor->share_from;
+
+                // if (src != NULL) {
+                //     if (scheduled.find(src) == scheduled.end()) {
+                //         can_schedule = false;
+                //     }
+                //     else {
+                //         benefit += src->data_size / pow(alpha, ref_count[src]);
+                //     }
+                // }
+
+                if (!can_schedule) {
+                    continue;
+                }
+
+                if (benefit > best_benefit) {
+                    best_benefit = benefit;
+                    choice = tensor;
+                }
+            }
+        }
+
+        GGML_ASSERT(choice != NULL);
+
+        sch[i] = choice;
+        scheduled.insert(choice);
+
+        ggml_tensor * src;
+
+        src = choice->src0;
+        if (ref_count.find(src) != ref_count.end()) {
+            ref_count[src]--;
+        }
+
+        src = choice->src1;
+        if (ref_count.find(src) != ref_count.end()) {
+            ref_count[src]--;
+        }
+
+        for (int j = 0; j < GGML_MAX_OPT; j++) {
+            src = choice->opt[j];
+            if (ref_count.find(src) != ref_count.end()) {
+                ref_count[src]--;
+            }
+        }
+
+        // src = choice->share_from;
+        // if (ref_count.find(src) != ref_count.end()) {
+        //     ref_count[src]--;
+        // }
+    }
+
+    for (int i = 0; i < n_nodes; i++) {
+        cgraph->nodes[i] = sch[i];
+    }
+
+    delete[] sch;
+}
+
 void ggml_cgraph_plan_memory(ggml_cgraph *cgraph) {
+
     // 为与常量共享空间的张量分配空间
     for (int i = 0; i < cgraph->n_nodes; i++) {
         ggml_tensor * node = cgraph->nodes[i];
@@ -35,16 +185,13 @@ void ggml_cgraph_plan_memory(ggml_cgraph *cgraph) {
         ggml_tensor *node = cgraph->nodes[i];
         if (node->is_deferred) {
             if (node->share_from == NULL) {
-                tensor_to_mem_buffer_id.insert(
-                    std::pair<ggml_tensor *, int>(node, n_mem_buffer));
+                tensor_to_mem_buffer_id[node] =  n_mem_buffer;
                 n_mem_buffer++;
 
                 mem_sum += node->data_size;
             }
             else {
-                tensor_to_mem_buffer_id.insert(
-                    std::pair<ggml_tensor *, int>
-                    (node, tensor_to_mem_buffer_id[node->share_from]));
+                tensor_to_mem_buffer_id[node] = tensor_to_mem_buffer_id[node->share_from];
             }
         }
     }

@@ -15811,12 +15811,6 @@ static void ggml_visit_parents(struct ggml_cgraph * cgraph, struct ggml_tensor *
         }
     }
 
-    for (int i = 0; i < cgraph->n_leafs; i++) {
-        if (cgraph->leafs[i] == node) {
-            return;
-        }
-    }
-
     if (node->src0) {
         ggml_visit_parents(cgraph, node->src0);
     }
@@ -15831,27 +15825,15 @@ static void ggml_visit_parents(struct ggml_cgraph * cgraph, struct ggml_tensor *
         }
     }
 
-    if (node->op == GGML_OP_NONE && node->grad == NULL && !node->is_deferred) {
-        // reached a leaf node, not part of the gradient graph (e.g. a constant)
-        GGML_ASSERT(cgraph->n_leafs < GGML_MAX_NODES);
+    GGML_ASSERT(cgraph->n_nodes < GGML_MAX_NODES);
 
-        if (strlen(node->name) == 0) {
-            ggml_format_name(node, "leaf_%d", cgraph->n_leafs);
-        }
-
-        cgraph->leafs[cgraph->n_leafs] = node;
-        cgraph->n_leafs++;
-    } else {
-        GGML_ASSERT(cgraph->n_nodes < GGML_MAX_NODES);
-
-        if (strlen(node->name) == 0) {
-            ggml_format_name(node, "node_%d", cgraph->n_nodes);
-        }
-
-        cgraph->nodes[cgraph->n_nodes] = node;
-        cgraph->grads[cgraph->n_nodes] = node->grad;
-        cgraph->n_nodes++;
+    if (strlen(node->name) == 0) {
+        ggml_format_name(node, "node_%d", cgraph->n_nodes);
     }
+
+    cgraph->nodes[cgraph->n_nodes] = node;
+    cgraph->grads[cgraph->n_nodes] = node->grad;
+    cgraph->n_nodes++;
 }
 
 void ggml_visit_output(struct ggml_tensor * tensor) {
@@ -16628,6 +16610,7 @@ void ggml_graph_compute_new(struct ggml_cgraph * cgraph, int n_threads) {
     if (plan.work_size > 0) {
         plan.work_data = malloc(plan.work_size);
     }
+    ggml_cgraph_schedule(cgraph);
     ggml_cgraph_plan_memory(cgraph);
     ggml_graph_compute(cgraph, &plan);
 
