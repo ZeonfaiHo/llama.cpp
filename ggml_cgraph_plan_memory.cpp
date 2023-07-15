@@ -7,6 +7,7 @@
 #include <set>
 #include <cmath>
 #include <unordered_set>
+#include <vector>
 
 struct ggml_mem_buffer_info {
     int id;
@@ -17,39 +18,58 @@ struct ggml_mem_buffer_info {
     bool allocated;
 };
 
-void add_ref_count(ggml_tensor * tensor, std::unordered_map<ggml_tensor *, int> ref_count) {
-    if (ref_count.find(tensor) != ref_count.end()) {
-        ref_count[tensor]++;
+void update_ref_count(ggml_tensor * tensor, std::unordered_map<ggml_tensor *, int>& ref_count, int delta) {
+    if (tensor == NULL) {
+        return;
     }
-    else {
-        ref_count[tensor] = 1;
+    
+    if (ref_count.find(tensor) == ref_count.end()) {
+        ref_count[tensor] = 0;
     }
+
+    ref_count[tensor] += delta;
 }
 
+float calculate_benefit(ggml_tensor * tensor, std::unordered_map<ggml_tensor *, int>& ref_count, std::unordered_set<ggml_tensor *>& scheduled, float alpha) {
+    float benefit = tensor->is_deferred && tensor->share_from != NULL ? (-tensor->data_size) : 0;
+    // float benefit = 0;
+
+    std::vector<ggml_tensor *> sources = { tensor->src0, tensor->src1 };
+
+    for (int i = 0; i < GGML_MAX_OPT; i++) {
+        sources.push_back(tensor->opt[i]);
+    }
+
+    for (ggml_tensor * src : sources) {
+        if (src != NULL) {
+            if (scheduled.find(src) == scheduled.end()) {
+                return -2e18;
+            }
+            else 
+            if (src->is_deferred) 
+            {
+                benefit += alpha * src->data_size / pow(alpha, ref_count[src]);
+                // benefit += 1 / pow(alpha, ref_count[src]);
+            }
+        }
+    }
+
+    return benefit;
+}
 
 void ggml_cgraph_schedule(ggml_cgraph * cgraph) {
 
-    const float alpha = 1.5;
-
+    const float alpha = 2.0;
     const int n_nodes = cgraph->n_nodes;
 
     std::unordered_map<ggml_tensor *, int> ref_count;
     for (int i = 0; i < n_nodes; i++) {
         const ggml_tensor * tensor = cgraph->nodes[i];
-        if (tensor->src0 != NULL) {
-            add_ref_count(tensor->src0, ref_count);
-        }
-        if (tensor->src1 != NULL) {
-            add_ref_count(tensor->src1, ref_count);
-        }
+        update_ref_count(tensor->src0, ref_count, 1);
+        update_ref_count(tensor->src1, ref_count, 1);
         for (int j = 0; j < GGML_MAX_OPT; j++) {
-            if (tensor->opt[j] != NULL) {
-                add_ref_count(tensor->opt[j], ref_count);
-            }
+            update_ref_count(tensor->opt[j], ref_count, 1);
         }
-        // if (tensor->share_from != NULL) {
-        //     add_ref_count(tensor->share_from, ref_count);
-        // }
     }
 
     ggml_tensor **sch = new ggml_tensor * [n_nodes];
@@ -62,64 +82,7 @@ void ggml_cgraph_schedule(ggml_cgraph * cgraph) {
             ggml_tensor * tensor = cgraph->nodes[j];
             
             if (scheduled.find(tensor) == scheduled.end()) {
-
-                bool can_schedule = true;
-                float benefit = 0;
-                
-                ggml_tensor * src;
-                
-                src = tensor->src0;
-                
-                if (src != NULL) {
-                    if (scheduled.find(src) == scheduled.end()) {
-                        can_schedule = false;
-                    }
-                    else {
-                        benefit += src->data_size / pow(alpha, ref_count[src]);
-                    }
-                }
-
-                src = tensor->src1;
-
-                if (src != NULL) {
-                    if (scheduled.find(src) == scheduled.end()) {
-                        can_schedule = false;
-                    }
-                    else {
-                        benefit += src->data_size / pow(alpha, ref_count[src]);
-                    }
-                }
-
-                for (int k = 0; k < GGML_MAX_OPT; k++) {
-                    if (tensor->opt[k] != NULL) {
-                        src = tensor->opt[k];
-
-                        if (src != NULL) {
-                            if (scheduled.find(src) == scheduled.end()) {
-                                can_schedule = false;
-                            }
-                            else {
-                                benefit += src->data_size / pow(alpha, ref_count[src]);
-                            }
-                        }
-                    }
-                }
-
-                // src = tensor->share_from;
-
-                // if (src != NULL) {
-                //     if (scheduled.find(src) == scheduled.end()) {
-                //         can_schedule = false;
-                //     }
-                //     else {
-                //         benefit += src->data_size / pow(alpha, ref_count[src]);
-                //     }
-                // }
-
-                if (!can_schedule) {
-                    continue;
-                }
-
+                float benefit = calculate_benefit(tensor, ref_count, scheduled, alpha);
                 if (benefit > best_benefit) {
                     best_benefit = benefit;
                     choice = tensor;
@@ -132,29 +95,11 @@ void ggml_cgraph_schedule(ggml_cgraph * cgraph) {
         sch[i] = choice;
         scheduled.insert(choice);
 
-        ggml_tensor * src;
-
-        src = choice->src0;
-        if (ref_count.find(src) != ref_count.end()) {
-            ref_count[src]--;
-        }
-
-        src = choice->src1;
-        if (ref_count.find(src) != ref_count.end()) {
-            ref_count[src]--;
-        }
-
+        update_ref_count(choice->src0, ref_count, -1);
+        update_ref_count(choice->src1, ref_count, -1);
         for (int j = 0; j < GGML_MAX_OPT; j++) {
-            src = choice->opt[j];
-            if (ref_count.find(src) != ref_count.end()) {
-                ref_count[src]--;
-            }
+            update_ref_count(choice->opt[j], ref_count, -1);
         }
-
-        // src = choice->share_from;
-        // if (ref_count.find(src) != ref_count.end()) {
-        //     ref_count[src]--;
-        // }
     }
 
     for (int i = 0; i < n_nodes; i++) {
