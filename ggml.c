@@ -16610,11 +16610,15 @@ void ggml_graph_compute_new(struct ggml_cgraph * cgraph, int n_threads) {
     if (plan.work_size > 0) {
         plan.work_data = malloc(plan.work_size);
     }
-    ggml_cgraph_schedule(cgraph);
-    ggml_cgraph_plan_memory(cgraph);
+    // ggml_cgraph_schedule(cgraph);
+
+    static void ** intermediate_mem_buffer = NULL;
+    static size_t buf_size = 0;
+
+    ggml_cgraph_plan_memory(cgraph, &intermediate_mem_buffer, &buf_size);
     ggml_graph_compute(cgraph, &plan);
 
-    free(cgraph->mem_buffer);
+    // free(cgraph->mem_buffer);
     free(plan.work_data);
 }
 

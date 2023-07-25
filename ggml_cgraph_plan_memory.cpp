@@ -109,7 +109,7 @@ void ggml_cgraph_schedule(ggml_cgraph * cgraph) {
     delete[] sch;
 }
 
-void ggml_cgraph_plan_memory(ggml_cgraph *cgraph) {
+void ggml_cgraph_plan_memory(ggml_cgraph *cgraph, void ** intermediate_mem_buffer, size_t * buf_size) {
 
     // 为与常量共享空间的张量分配空间
     for (int i = 0; i < cgraph->n_nodes; i++) {
@@ -233,7 +233,13 @@ void ggml_cgraph_plan_memory(ggml_cgraph *cgraph) {
         offset = next;
     }
 
-    cgraph->mem_buffer = malloc(size_needed);
+    if (size_needed > *buf_size) {
+        free(*intermediate_mem_buffer);
+        *buf_size = size_needed + 1024 * 1024;
+        *intermediate_mem_buffer = malloc(*buf_size);
+    }
+
+    cgraph->mem_buffer = *intermediate_mem_buffer;
     cgraph->buf_size = size_needed;
 
     std::sort(buf_infos, buf_infos + n_mem_buffer, [](const ggml_mem_buffer_info & a, const ggml_mem_buffer_info & b) {
