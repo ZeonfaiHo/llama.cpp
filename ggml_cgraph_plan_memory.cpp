@@ -235,7 +235,7 @@ void ggml_cgraph_plan_memory(ggml_cgraph *cgraph, void ** intermediate_mem_buffe
 
     if (size_needed > *buf_size) {
         free(*intermediate_mem_buffer);
-        *buf_size = size_needed + 1024 * 1024;
+        *buf_size = size_needed + 1024;
         *intermediate_mem_buffer = malloc(*buf_size);
     }
 
