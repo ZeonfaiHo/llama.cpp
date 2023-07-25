@@ -25,7 +25,7 @@ struct gpt_params {
     uint32_t seed                           = -1;   // RNG seed
     int32_t n_threads                       = get_num_physical_cores();
     int32_t n_predict                       = -1;   // new tokens to predict
-    int32_t n_ctx                           = 2048;  // context size
+    int32_t n_ctx                           = 512;  // context size
     int32_t n_batch                         = 512;  // batch size for prompt processing (must be >=32 to use BLAS)
     int32_t n_gqa                           = 1;    // grouped-query attention factor (TODO: move to hparams)
     int32_t n_keep                          = 0;    // number of tokens to keep from initial prompt
