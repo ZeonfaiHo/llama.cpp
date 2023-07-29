@@ -10516,6 +10516,12 @@ static void ggml_compute_forward_mul_mat(
             }
         }
 
+        size_t data_size = GGML_TYPE_SIZE[dst->type];
+        for (int i = 0; i < GGML_MAX_DIMS; i++) {
+            data_size *= dst->ne[i];
+        }
+        memset(dst->data, 0, data_size);
+
         return;
     }
 
@@ -10535,54 +10541,62 @@ static void ggml_compute_forward_mul_mat(
     const void * wdata    = (src1->type == vec_dot_type) ? src1->data : params->wdata;
     const size_t row_size = ne10*GGML_TYPE_SIZE[vec_dot_type]/GGML_BLCK_SIZE[vec_dot_type];
 
-    const int BLOCK_SIZE = 8;
-
-    // GGML_ASSERT(nr1 % BLOCK_SIZE == 0);
-    // GGML_ASSERT((ir11 - ir10) % BLOCK_SIZE == 0);
+    const int BLOCK_SIZE = 1;
+    const int VEC_SIZE = 4096;
     
+    for (int b2 = 0; b2 < ne00; b2 += VEC_SIZE) {
     for (int b1 = ir10; b1 < ir11; b1 += BLOCK_SIZE) {
     for (int b0 = 0; b0 < nr1; b0 += BLOCK_SIZE) {
 
-    for (int64_t ir1 = b0; ir1 < b0 + BLOCK_SIZE && ir1 < nr1; ++ir1) {
-    // for (int64_t ir1 = 0; ir1 < nr1; ++ir1) {
-        const int64_t i13 = (ir1/(ne12*ne11));
-        const int64_t i12 = (ir1 - i13*ne12*ne11)/ne11;
-        const int64_t i11 = (ir1 - i13*ne12*ne11 - i12*ne11);
+        for (int64_t ir1 = b0; ir1 < b0 + BLOCK_SIZE && ir1 < nr1; ++ir1) {
+            const int64_t i13 = (ir1/(ne12*ne11));
+            const int64_t i12 = (ir1 - i13*ne12*ne11)/ne11;
+            const int64_t i11 = (ir1 - i13*ne12*ne11 - i12*ne11);
 
-        const int64_t ir0 = (ir1/ne11)%(ne02*ne03);
-        const int64_t i03 = (ir0/(ne02));
-        // Hack for "Falcon multi-query-attention key stutter" / alternative to ggml_repeat2.
-        // See https://github.com/ggerganov/llama.cpp/issues/1602#issuecomment-1606087470:
-        // GG: this is likely the correct way to broadcast, though need some more thought
-        //     therefore leaving the comments to remind us for now
-        const int64_t i02 = (i12 / (ne12 / ne02));
-        // Original from PR/224 (and also essential/correct for non-broadcast matmuls in Falcon)
-        // const int64_t i02 = (ir0 - i03*ne02);
+            const int64_t ir0 = (ir1/ne11)%(ne02*ne03);
+            const int64_t i03 = (ir0/(ne02));
+            // Hack for "Falcon multi-query-attention key stutter" / alternative to ggml_repeat2.
+            // See https://github.com/ggerganov/llama.cpp/issues/1602#issuecomment-1606087470:
+            // GG: this is likely the correct way to broadcast, though need some more thought
+            //     therefore leaving the comments to remind us for now
+            const int64_t i02 = (i12 / (ne12 / ne02));
+            // Original from PR/224 (and also essential/correct for non-broadcast matmuls in Falcon)
+            // const int64_t i02 = (ir0 - i03*ne02);
 
-        const int64_t i1 = i11;
-        const int64_t i2 = i12;
-        const int64_t i3 = i13;
+            const int64_t i1 = i11;
+            const int64_t i2 = i12;
+            const int64_t i3 = i13;
 
-        const char * src0_row = (const char *) src0->data + (  0 + i02*nb02 + i03*nb03     );
+            const char * src0_row = (const char *) src0->data + (  0 + i02*nb02 + i03*nb03     );
 
-        // desc: when src1 is not a contiguous memory block we have to calculate the offset using the strides
-        //       if it is, then we have either copied the data to params->wdata and made it contiguous or we are using
-        //       the original src1 data pointer, so we should index using the indices directly
-        // TODO: this is a bit of a hack, we should probably have a better way to handle this
-        const char * src1_col = (const char *) wdata +
-            (src1_cont || src1->type != vec_dot_type
-             ? (i11      + i12*ne11 + i13*ne12*ne11)*row_size
-             : (i11*nb11 + i12*nb12 + i13*nb13));
+            // desc: when src1 is not a contiguous memory block we have to calculate the offset using the strides
+            //       if it is, then we have either copied the data to params->wdata and made it contiguous or we are using
+            //       the original src1 data pointer, so we should index using the indices directly
+            // TODO: this is a bit of a hack, we should probably have a better way to handle this
+            const char * src1_col = (const char *) wdata +
+                (src1_cont || src1->type != vec_dot_type
+                ? (i11      + i12*ne11 + i13*ne12*ne11)*row_size
+                : (i11*nb11 + i12*nb12 + i13*nb13));
 
-        float * dst_col = (float *) ((char *) dst->data + (i1*nb1 + i2*nb2 + i3*nb3));
-        
+            float * dst_col = (float *) ((char *) dst->data + (i1*nb1 + i2*nb2 + i3*nb3));
+            
 
-        for (int64_t ir = b1; ir < b1 + BLOCK_SIZE && ir < ir11; ++ir) {
-        // for (int64_t ir = ir10; ir < ir11; ++ir) {
-            vec_dot(ne00, &dst_col[ir], src0_row + ir*nb01, src1_col);
+
+            for (int64_t ir = b1; ir < b1 + BLOCK_SIZE && ir < ir11; ++ir) {
+                // dst_col[ir] = 0;
+
+                float temp = 0;
+                int n_elem = ne00 < b2 + VEC_SIZE ? ne00 - b2 : VEC_SIZE;
+                vec_dot(n_elem, 
+                        &temp, 
+                        src0_row + ir*nb01 + b2 / GGML_BLCK_SIZE[src0->type] * GGML_TYPE_SIZE[src0->type], 
+                        src1_col + b2 / GGML_BLCK_SIZE[vec_dot_type] * GGML_TYPE_SIZE[vec_dot_type]);
+                
+                dst_col[ir] += temp;
+            }
         }
-    }
     
+    }
     }
     }
 
@@ -10597,118 +10611,6 @@ static void ggml_compute_forward_mul_mat(
 
     //    printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX task %d/%d: %d us, acc = %d\n", ith, nth, (int) (t1 - t0), (int) acc);
     //}
-}
-
-#define BLOCK_SIZE 16
-
-static void ggml_compute_forward_mul_mat_(
-        const struct ggml_compute_params * params,
-        const struct ggml_tensor * src0,
-        const struct ggml_tensor * src1,
-              struct ggml_tensor * dst) {
-
-    GGML_TENSOR_BINARY_OP_LOCALS;
-
-    const int ith = params->ith;
-    const int nth = params->nth;
-
-    const enum ggml_type type = src0->type;
-
-    const bool src1_cont = ggml_is_contiguous(src1);
-
-    ggml_vec_dot_t    const vec_dot               = type_traits[type].vec_dot;
-    enum ggml_type    const vec_dot_type          = type_traits[type].vec_dot_type;
-    ggml_from_float_t const from_float_to_vec_dot = type_traits[vec_dot_type].from_float;
-
-    GGML_ASSERT(ne0 == ne01);
-    GGML_ASSERT(ne1 == ne11);
-    GGML_ASSERT(ne2 == ne12);
-    GGML_ASSERT(ne3 == ne13);
-
-    GGML_ASSERT(nb00 == GGML_TYPE_SIZE[type]);
-    GGML_ASSERT(nb10 == sizeof(float));
-
-    GGML_ASSERT(nb0 == sizeof(float));
-    GGML_ASSERT(nb0 <= nb1);
-    GGML_ASSERT(nb1 <= nb2);
-    GGML_ASSERT(nb2 <= nb3);
-
-    if (params->type == GGML_TASK_INIT) {
-        if (src1->type != vec_dot_type) {
-            char * wdata = params->wdata;
-            const size_t row_size = ne10*GGML_TYPE_SIZE[vec_dot_type]/GGML_BLCK_SIZE[vec_dot_type];
-
-            for (int64_t i13 = 0; i13 < ne13; ++i13) {
-                for (int64_t i12 = 0; i12 < ne12; ++i12) {
-                    for (int64_t i11 = 0; i11 < ne11; ++i11) {
-                        from_float_to_vec_dot((float *)((char *) src1->data + i13*nb13 + i12*nb12 + i11*nb11), (void *) wdata, ne10);
-                        wdata += row_size;
-                    }
-                }
-            }
-        }
-
-        return;
-    }
-
-    if (params->type == GGML_TASK_FINALIZE) {
-        return;
-    }
-
-    const int64_t dr = (ne01 + nth - 1)/nth;
-
-    const int64_t ir10 = dr*ith;
-    const int64_t ir11 = MIN(ir10 + dr, ne01);
-
-    const int64_t nr1 = ne11*ne12*ne13;
-
-    const void * wdata    = (src1->type == vec_dot_type) ? src1->data : params->wdata;
-    const size_t row_size = ne10*GGML_TYPE_SIZE[vec_dot_type]/GGML_BLCK_SIZE[vec_dot_type];
-
-    // const int64_t num_blocks_ir1 = (nr1 + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    // const int64_t num_blocks_ir10 = (ir11 - ir10 + BLOCK_SIZE - 1) / BLOCK_SIZE;
-
-    for (int64_t block_ir1 = 0; block_ir1 < nr1; block_ir1 += BLOCK_SIZE) {
-        for (int64_t block_ir10 = ir10; block_ir10 < ir11; block_ir10 += BLOCK_SIZE) {
-
-            for (int64_t ir1 = block_ir1; ir1 < block_ir1 + BLOCK_SIZE; ++ir1) {
-                const int64_t i13 = (ir1/(ne12*ne11));
-                const int64_t i12 = (ir1 - i13*ne12*ne11)/ne11;
-                const int64_t i11 = (ir1 - i13*ne12*ne11 - i12*ne11);
-
-                const int64_t ir0 = (ir1/ne11)%(ne02*ne03);
-                const int64_t i03 = (ir0/(ne02));
-                // Hack for "Falcon multi-query-attention key stutter" / alternative to ggml_repeat2.
-                // See https://github.com/ggerganov/llama.cpp/issues/1602#issuecomment-1606087470:
-                // GG: this is likely the correct way to broadcast, though need some more thought
-                //     therefore leaving the comments to remind us for now
-                const int64_t i02 = (i12 / (ne12 / ne02));
-                // Original from PR/224 (and also essential/correct for non-broadcast matmuls in Falcon)
-                // const int64_t i02 = (ir0 - i03*ne02);
-
-                const int64_t i1 = i11;
-                const int64_t i2 = i12;
-                const int64_t i3 = i13;
-
-                const char * src0_row = (const char *) src0->data + (  0 + i02*nb02 + i03*nb03     );
-
-                // desc: when src1 is not a contiguous memory block we have to calculate the offset using the strides
-                //       if it is, then we have either copied the data to params->wdata and made it contiguous or we are using
-                //       the original src1 data pointer, so we should index using the indices directly
-                // TODO: this is a bit of a hack, we should probably have a better way to handle this
-                const char * src1_col = (const char *) wdata +
-                    (src1_cont || src1->type != vec_dot_type
-                    ? (i11      + i12*ne11 + i13*ne12*ne11)*row_size
-                    : (i11*nb11 + i12*nb12 + i13*nb13));
-
-                float * dst_col = (float *) ((char *) dst->data + (i1*nb1 + i2*nb2 + i3*nb3));
-
-                for (int64_t ir = block_ir10; ir < block_ir10 + BLOCK_SIZE; ++ir) {
-                    vec_dot(ne00, &dst_col[ir], src0_row + ir*nb01, src1_col);
-                }
-            }
-        }
-    }
 }
 
 // ggml_compute_forward_out_prod
