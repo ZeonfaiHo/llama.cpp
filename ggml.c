@@ -10517,9 +10517,10 @@ static void ggml_compute_forward_mul_mat(
         }
 
         size_t data_size = GGML_TYPE_SIZE[dst->type];
-        for (int i = 0; i < GGML_MAX_DIMS; i++) {
-            data_size *= dst->ne[i];
-        }
+        // for (int i = 0; i < GGML_MAX_DIMS; i++) {
+        //     data_size *= dst->ne[i];
+        // }
+        data_size *= ne0 * ne1 * ne2 * ne3;
         memset(dst->data, 0, data_size);
 
         return;
@@ -10541,14 +10542,16 @@ static void ggml_compute_forward_mul_mat(
     const void * wdata    = (src1->type == vec_dot_type) ? src1->data : params->wdata;
     const size_t row_size = ne10*GGML_TYPE_SIZE[vec_dot_type]/GGML_BLCK_SIZE[vec_dot_type];
 
-    const int BLOCK_SIZE = 1;
-    const int VEC_SIZE = 4096;
+    const int BLOCK_SIZE = 32;
+    const int VEC_SIZE = 512;
     
     for (int b2 = 0; b2 < ne00; b2 += VEC_SIZE) {
     for (int b1 = ir10; b1 < ir11; b1 += BLOCK_SIZE) {
     for (int b0 = 0; b0 < nr1; b0 += BLOCK_SIZE) {
 
-        for (int64_t ir1 = b0; ir1 < b0 + BLOCK_SIZE && ir1 < nr1; ++ir1) {
+        for (int64_t ir1 = b0, m0 = b0 + BLOCK_SIZE < nr1 ? b0 + BLOCK_SIZE : nr1; 
+             ir1 < m0; 
+             ++ir1) {
             const int64_t i13 = (ir1/(ne12*ne11));
             const int64_t i12 = (ir1 - i13*ne12*ne11)/ne11;
             const int64_t i11 = (ir1 - i13*ne12*ne11 - i12*ne11);
@@ -10582,7 +10585,9 @@ static void ggml_compute_forward_mul_mat(
             
 
 
-            for (int64_t ir = b1; ir < b1 + BLOCK_SIZE && ir < ir11; ++ir) {
+            for (int64_t ir = b1, m1 = b1 + BLOCK_SIZE < ir11 ? b1 + BLOCK_SIZE : ir11; 
+                 ir < m1; 
+                 ++ir) {
                 // dst_col[ir] = 0;
 
                 float temp = 0;
