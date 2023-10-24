@@ -18342,8 +18342,8 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
                     if (strcmp(node->name, "K") == 0) {
                         static int count = 0;
 
-                        // if (count >= 32 && count < 64) {
-                        if (count == 63) {
+                        // // if (count >= 32 && count < 64) {
+                        if (count == 48) {
                             FILE *file = fopen("K", "a");
                             if (file == NULL) {
                                 printf("Failed to open the file.\n");
@@ -18361,8 +18361,9 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
                             for (int i2 = 0; i2 < node->ne[2]; i2++) {
                                 for (int i1 = 0; i1 < node->ne[1]; i1++) {
                                     for (int i0 = 0; i0 < node->ne[0]; i0++) {
-                                        char *p = (char *) node->data + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
-                                        float res = ggml_fp16_to_fp32(p);
+                                        char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
+                                        ggml_fp16_t inp = *((ggml_fp16_t *) p);
+                                        float res = ggml_fp16_to_fp32(inp);
                                         fprintf(file, "%f ", res);
                                     }
                                     fprintf(file, "\n");
