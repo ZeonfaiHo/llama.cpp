@@ -18299,6 +18299,7 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
             if (node_n != -1) {
                 /* FINALIZE */
                 struct ggml_tensor * node = state->shared->cgraph->nodes[node_n];
+
                 if (GGML_OP_HAS_FINALIZE[node->op]) {
                     params.nth = n_tasks_arr[node_n];
                     ggml_compute_forward(&params, node);
@@ -18309,8 +18310,9 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
             // distribute new work or execute it direct if 1T
             while (++node_n < cgraph->n_nodes) {
                 GGML_PRINT_DEBUG_5("%s: %d/%d\n", __func__, node_n, cgraph->n_nodes);
-
                 struct ggml_tensor * node = cgraph->nodes[node_n];
+
+
                 const int n_tasks = n_tasks_arr[node_n];
 
                 state->shared->perf_node_start_cycles  = ggml_perf_cycles();
@@ -18336,6 +18338,44 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
                     }
 
                     ggml_graph_compute_perf_stats_node(node, state->shared);
+                    
+                    if (strcmp(node->name, "K") == 0) {
+                        static int count = 0;
+
+                        // if (count >= 32 && count < 64) {
+                        if (count == 63) {
+                            FILE *file = fopen("K", "a");
+                            if (file == NULL) {
+                                printf("Failed to open the file.\n");
+                            }
+
+                            fprintf(file, "type enum: %d\n", node->type);
+
+
+                            for (int i = 0; i < node->n_dims; i++) {
+                                fprintf(file, "K_%d ne[%d]: %ld\n", count, i, node->ne[i]);
+                                fprintf(file, "K_%d nb[%d]: %ld\n", count, i, node->nb[i]);
+                            }
+
+
+                            for (int i2 = 0; i2 < node->ne[2]; i2++) {
+                                for (int i1 = 0; i1 < node->ne[1]; i1++) {
+                                    for (int i0 = 0; i0 < node->ne[0]; i0++) {
+                                        char *p = (char *) node->data + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
+                                        float res = ggml_fp16_to_fp32(p);
+                                        fprintf(file, "%f ", res);
+                                    }
+                                    fprintf(file, "\n");
+                                }
+
+                                fprintf(file, "\n");
+                            }
+
+                            fclose(file);
+                        }
+
+                        count ++;
+                    }
                 } else {
                     break;
                 }
