@@ -18305,13 +18305,52 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
                     ggml_compute_forward(&params, node);
                 }
                 ggml_graph_compute_perf_stats_node(node, state->shared);
+
+                if (strcmp(node->name, "KQ") == 0) {
+                    static int count_KQ = 0;
+
+                    // // if (count >= 32 && count < 64) {
+                    if (count_KQ == 48) {
+                        FILE *file = fopen("K", "a");
+                        if (file == NULL) {
+                            printf("Failed to open the file.\n");
+                        }
+
+                        fprintf(file, "type enum: %d\n", node->type);
+
+
+                        for (int i = 0; i < node->n_dims; i++) {
+                            fprintf(file, "K_%d ne[%d]: %ld\n", count_KQ, i, node->ne[i]);
+                            fprintf(file, "K_%d nb[%d]: %ld\n", count_KQ, i, node->nb[i]);
+                        }
+
+
+                        for (int i2 = 0; i2 < node->ne[2]; i2++) {
+                            for (int i1 = 0; i1 < node->ne[1]; i1++) {
+                                for (int i0 = 0; i0 < node->ne[0]; i0++) {
+                                    char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
+                                    // ggml_fp16_t inp = *((ggml_fp16_t *) p);
+                                    float res = * (float *) p;
+                                    // float res = ggml_fp16_to_fp32(inp);
+                                    fprintf(file, "%f ", res);
+                                }
+                                fprintf(file, "\n");
+                            }
+
+                            fprintf(file, "\n");
+                        }
+
+                        fclose(file);
+                    }
+
+                    count_KQ ++;
+                }
             }
 
             // distribute new work or execute it direct if 1T
             while (++node_n < cgraph->n_nodes) {
                 GGML_PRINT_DEBUG_5("%s: %d/%d\n", __func__, node_n, cgraph->n_nodes);
                 struct ggml_tensor * node = cgraph->nodes[node_n];
-
 
                 const int n_tasks = n_tasks_arr[node_n];
 
@@ -18338,45 +18377,7 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
                     }
 
                     ggml_graph_compute_perf_stats_node(node, state->shared);
-                    
-                    if (strcmp(node->name, "K") == 0) {
-                        static int count = 0;
-
-                        // // if (count >= 32 && count < 64) {
-                        if (count == 48) {
-                            FILE *file = fopen("K", "a");
-                            if (file == NULL) {
-                                printf("Failed to open the file.\n");
-                            }
-
-                            fprintf(file, "type enum: %d\n", node->type);
-
-
-                            for (int i = 0; i < node->n_dims; i++) {
-                                fprintf(file, "K_%d ne[%d]: %ld\n", count, i, node->ne[i]);
-                                fprintf(file, "K_%d nb[%d]: %ld\n", count, i, node->nb[i]);
-                            }
-
-
-                            for (int i2 = 0; i2 < node->ne[2]; i2++) {
-                                for (int i1 = 0; i1 < node->ne[1]; i1++) {
-                                    for (int i0 = 0; i0 < node->ne[0]; i0++) {
-                                        char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
-                                        ggml_fp16_t inp = *((ggml_fp16_t *) p);
-                                        float res = ggml_fp16_to_fp32(inp);
-                                        fprintf(file, "%f ", res);
-                                    }
-                                    fprintf(file, "\n");
-                                }
-
-                                fprintf(file, "\n");
-                            }
-
-                            fclose(file);
-                        }
-
-                        count ++;
-                    }
+                
                 } else {
                     break;
                 }
