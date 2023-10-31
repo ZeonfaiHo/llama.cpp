@@ -1,0 +1,51 @@
+Result: ('2021-11-17', "['菲律宾-马科斯城市-中部']", "['马科斯', '萨拉·杜特尔特', '“邦邦”小马科斯']", "['他只会角逐总统职位。']")
+Result: ('2021-10-25', "['菲律宾-马里亚-马拉卡南宫']", "['马科斯', '军士长理事会']", "['马科斯说，军队在保卫国家主权及财富方面扮演关键角色。他说：“我们将坚定不移，把菲武装部队建设成一支受他国军队尊重、为菲律宾带来民族自豪感的世界级军队。”', '马科斯决定将复绿武装部队打造成“世界级军队”图源：菲律宾《马尼拉时报》据报道，马科斯称，政府将继续推动实施改善军人及家属福利的计划和政策。考虑到菲律宾安全环境的变化，马科斯说，他期望菲武装部队适应时代需求，为任何紧急事件做好准备。他相信军士长们将继续学习新技能，获得新知识，为实现军队的发展目标服务。']")
+Result: ('2023年', "['菲律宾']", "['马科斯', '杜特尔特', '莎拉·杜特尔特']", "['杜特尔特对华强硬', '莎拉·杜特尔特的“感谢”']")
+Result: ('作者：新闻作者的姓名', "['菲律宾-马科斯政府-南海']", "['马科斯', '杜特尔特']", "['马科斯政府的亲美立场']")
+Traceback (most recent call last):
+  File "/home/zeonfaiho/llama.cpp/examples/information-extraction/./process.py", line 159, in <module>
+    time, place, person, speech = process_text(row['文本'])
+  File "/home/zeonfaiho/llama.cpp/examples/information-extraction/./process.py", line 133, in process_text
+    place = extract_place(text)
+  File "/home/zeonfaiho/llama.cpp/examples/information-extraction/./process.py", line 91, in extract_place
+    process = subprocess.run(command, 
+  File "/usr/lib/python3.10/subprocess.py", line 505, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+  File "/usr/lib/python3.10/subprocess.py", line 1154, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+  File "/usr/lib/python3.10/subprocess.py", line 2059, in _communicate
+    stdout = self._translate_newlines(stdout,
+  File "/usr/lib/python3.10/subprocess.py", line 1031, in _translate_newlines
+    data = data.decode(encoding, errors)
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe8 in position 1985: unexpected end of data
+Result: ('2021-11-17', "['菲律宾-马科斯城市-中部']", "['马科斯', '萨拉·杜特尔特', '“邦邦”小马科斯']", "['他只会角逐总统职位。']")
+Result: ('2021-10-25', "['菲律宾-马里亚-马拉卡南宫']", "['马科斯', '军士长理事会']", "['马科斯说，军队在保卫国家主权及财富方面扮演关键角色。他说：“我们将坚定不移，把菲武装部队建设成一支受他国军队尊重、为菲律宾带来民族自豪感的世界级军队。”', '马科斯决定将复绿武装部队打造成“世界级军队”图源：菲律宾《马尼拉时报》据报道，马科斯称，政府将继续推动实施改善军人及家属福利的计划和政策。考虑到菲律宾安全环境的变化，马科斯说，他期望菲武装部队适应时代需求，为任何紧急事件做好准备。他相信军士长们将继续学习新技能，获得新知识，为实现军队的发展目标服务。']")
+Result: ('2023年', "['菲律宾']", "['马科斯', '杜特尔特', '莎拉·杜特尔特']", "['杜特尔特对华强硬', '莎拉·杜特尔特的“感谢”']")
+Result: ('作者：新闻作者的姓名', "['菲律宾-马科斯政府-南海']", "['马科斯', '杜特尔特']", "['马科斯政府的亲美立场']")
+Result: ('2023年4月17日', "['美国-菲律宾-马科斯']", "['马科斯', '美国智库']", "['马科斯在美国智库发表演讲时再次特意强调，如果未来台海发生战事，美国不能利用在菲律宾的军事基地对中国采取进攻行动。', '马科斯是哪来的自信，认为自己能够控制美军？这种保证恐怕连自己都不信，更像是一个事先的“免责声明”。']")
+Result: ('2021年8月17日', "['中国-海警船-南海']", "['马科斯', '周志勇']", "['小马科斯：“菲律宾海岸警卫队船只在南海海域与中国海警船‘相撞’后受到损伤。”']")
+Result: ('2018-05-24', "['中国-海南省-海口市']", "['马科斯', '沙利文', '中方']", "['马科斯：“我们不会让他们撞船，但是如果他们继续撞船，那么我们就必须采取行动。”']")
+Result: ('2018年3月15日', "['中国海军和海警完全控制了仁爱礁周边海域，菲方人员想进入必须接受检查。']", "['马科斯', '中国海军和海警']", "['马科斯：“我们将很快宣布4处新提供给美军的基地。这些基地会提高保卫吕宋岛“东侧”的能力。”']")
+Result: ('2019-06-27', "['中国-（未知）-（未知）']", "['马科斯', '菲律宾国家铁路公司总经理', '中国代表']", "['马科斯：“虽然南海问题存在，但不会影响这次谈判。”']")
+Result: ('2023年4月15日', "['中国-马尼拉-南海']", "['马科斯', '杜特尔特']", "['小马科斯选择在中美之间选边站，并毫不犹豫地向美军提供军事基地。', '杜特尔特作为引领菲律宾民众走出毒品阴霾的领袖，其卓越的影响力不言而喻。']")
+Result: ('2021-09-15', "['英国-伦敛-伦敛']", "['马科斯', '阿隆索祖父', '皇马', '巴萨']", "['马科斯：“我是皇马青训出生的，但我也在巴萨里玩过了。”']")
+Result: ('2019-08-27', "['菲律宾-马科斯州-马科斯市']", "['马科斯', '雷吉诺']", "['马科斯没来参会，现在请求中国帮他建铁路。', '受巴以冲突的影响，美国没有心思再为菲律宾撑腰，马科斯也消停了。', '近日菲律宾国家铁路公司的总经理雷吉诺表示，菲律宾当下正在和中国谈判，主要就是菲律宾南部长途铁路的项目贷款问题，双方已经制定了时间表。', '雷吉诺直言不讳的表示，中菲虽然在南海问题上存在争端，但是并不会对谈判造成影响，因为主要还是看中方对这个项目感不感兴趣。', '为防止和中国谈判失败，菲方相关部门还在研究其他的应急方案，寻找别的融资办法。']")
+Result: ('2021-03-26', "['菲律宾-马科斯-总统']", "['马科斯', '布林肯', '卡彪', '齐默尔曼·杜特尔特-卡彪', '阿基诺三世', '杜特尔特']", "['马科斯拍胸脯前，最好回顾一下他之前说的。今年初，他也是信誓旦旦地说，允许外国在本国设立永久军事基地是违反菲律宾宪法的。可一回头，到了2月2日，菲律宾国防部同意向美军再开放4个军事基地的使用权限。这不仅意味着美军在菲可用基地从5个增加到9个，更意味着小马科斯之前拍胸脯说的话让人深度质疑。', '马科斯又说，美军不得利用在菲美军基地进攻中国。这话说的，不知道他哪来的底气？现在是美国在菲律宾有驻军，而不是菲律宾在美国有驻军！一个菲律宾总统，能对美国驻军说这也不准，那也不准？难道五角大楼还秘密给他封了个司令当当？美空军的C5运输机降落在菲律宾的军事基地图：美菲“肩并肩”演习脸书账号笑饮要说，即便有那么一纸秘密委任状，小马科斯也是个光杆司令，指挥不动美军的！', '马科斯与莎拉·齐默尔曼·杜特尔特-卡彪图：资料即便在当下的菲律宾当局，他担任总统，而副总统恰恰是前总统杜特尔特的女儿莎拉·齐默尔曼·杜特尔特-卡彪。要知道，杜特尔特的']")
+Result: ('2019年8月23日', "['东盟峰会']", "['马科斯', '王毅', '杜特尔特']", "['小马科斯：“我们将继续推进对华合作，努力建立更多伙伴关系与合作。”']")
+Result: ('2021年10月18日', "['中国-杜特尔特-南部']", "['马科斯', '菲律宾国家铁路公司负责人', '菲律宾交通部副部长']", "['马科斯：“我们不会让任何国家在南海问题上得到优势，我们都是平等的。”']")
+Traceback (most recent call last):
+  File "/home/zeonfaiho/llama.cpp/examples/information-extraction/./process.py", line 159, in <module>
+    time, place, person, speech = process_text(row['文本'])
+  File "/home/zeonfaiho/llama.cpp/examples/information-extraction/./process.py", line 133, in process_text
+    place = extract_place(text)
+  File "/home/zeonfaiho/llama.cpp/examples/information-extraction/./process.py", line 91, in extract_place
+    process = subprocess.run(command, 
+  File "/usr/lib/python3.10/subprocess.py", line 505, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+  File "/usr/lib/python3.10/subprocess.py", line 1154, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+  File "/usr/lib/python3.10/subprocess.py", line 2059, in _communicate
+    stdout = self._translate_newlines(stdout,
+  File "/usr/lib/python3.10/subprocess.py", line 1031, in _translate_newlines
+    data = data.decode(encoding, errors)
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe8 in position 2163: unexpected end of data
