@@ -18361,21 +18361,27 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
                 // 添加扰动
 
                 if (strcmp(node->name, TARGET_TENSOR_NAME) == 0) {
-                    for (int i2 = 0; i2 < node->ne[2]; i2++) {
-                        for (int i1 = 0; i1 < node->ne[1]; i1++) {
-                            for (int i0 = 0; i0 < node->ne[0]; i0++) {
-                                char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
+                    static int count_target_tensor = 0;
+                    
+                    if (count_target_tensor % 32 == 16) {
+                        for (int i2 = 0; i2 < node->ne[2]; i2++) {
+                            for (int i1 = 0; i1 < node->ne[1]; i1++) {
+                                for (int i0 = 0; i0 < node->ne[0]; i0++) {
+                                    char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
 
-                                float *pd = (float *) p;
+                                    float *pd = (float *) p;
 
-                                if (*pd > -0.01f && *pd < 0.01f) {
-                                    float max_dis = 0.01;
-                                    float dis = (float) rand() / (float) RAND_MAX * max_dis * 2 - max_dis;
-                                    (*pd) += dis;
+                                    // if (*pd > -0.1f && *pd < 0.1f) {
+                                        float max_dis = 0.1;
+                                        float dis = (float) rand() / (float) RAND_MAX * max_dis * 2 - max_dis;
+                                        (*pd) += dis;
+                                    // }
                                 }
                             }
                         }
                     }
+
+                    count_target_tensor++;
                 }
 
                 // ==========
