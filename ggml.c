@@ -18267,6 +18267,8 @@ static void ggml_graph_compute_perf_stats_node(struct ggml_tensor * node, const 
     node->perf_time_us += time_us_cur;
 }
 
+#define TARGET_TENSOR_NAME "inpFF"
+
 static thread_ret_t ggml_graph_compute_thread(void * data) {
     struct ggml_compute_state * state = (struct ggml_compute_state *) data;
 
@@ -18306,45 +18308,77 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
                 }
                 ggml_graph_compute_perf_stats_node(node, state->shared);
 
-                if (strcmp(node->name, "KQ") == 0) {
-                    static int count_KQ = 0;
+                // ==========
+                // 打印激活值
 
-                    // // if (count >= 32 && count < 64) {
-                    if (count_KQ == 48) {
-                        FILE *file = fopen("K", "a");
-                        if (file == NULL) {
-                            printf("Failed to open the file.\n");
-                        }
+                // if (strcmp(node->name, TARGET_TENSOR_NAME) == 0) {
+                //     static int count_target_tensor = 0;
+                //     printf("type enum: %d\n", node->type);
 
-                        fprintf(file, "type enum: %d\n", node->type);
+                //     for (int i = 0; i < node->n_dims; i++) {
+                //         printf("%s_%d ne[%d]: %ld\n", TARGET_TENSOR_NAME, count_target_tensor, i, node->ne[i]);
+                //         // printf("inpFF_%d nb[%d]: %ld\n", count_inp_FF, i, node->nb[i]);
+                //     }
+
+                //     // // if (count >= 32 && count < 64) {
+                //     if (count_target_tensor > 32 && count_target_tensor % 32 == 16) {
+                //         FILE *file = fopen(TARGET_TENSOR_NAME, "a");
+                //         // if (file == NULL) {
+                //         //     printf("Failed to open the file.\n");
+                //         // }
+
+                //         // fprintf(file, "type enum: %d\n", node->type);
 
 
-                        for (int i = 0; i < node->n_dims; i++) {
-                            fprintf(file, "K_%d ne[%d]: %ld\n", count_KQ, i, node->ne[i]);
-                            fprintf(file, "K_%d nb[%d]: %ld\n", count_KQ, i, node->nb[i]);
-                        }
+                //         // for (int i = 0; i < node->n_dims; i++) {
+                //         //     fprintf(file, "inpFF_%d ne[%d]: %ld\n", count_inp_FF, i, node->ne[i]);
+                //         //     // fprintf(file, "inpFF_%d nb[%d]: %ld\n", count_inp_FF, i, node->nb[i]);
+                //         // }
 
 
-                        for (int i2 = 0; i2 < node->ne[2]; i2++) {
-                            for (int i1 = 0; i1 < node->ne[1]; i1++) {
-                                for (int i0 = 0; i0 < node->ne[0]; i0++) {
-                                    char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
-                                    // ggml_fp16_t inp = *((ggml_fp16_t *) p);
-                                    float res = * (float *) p;
-                                    // float res = ggml_fp16_to_fp32(inp);
-                                    fprintf(file, "%f ", res);
+                //         for (int i2 = 0; i2 < node->ne[2]; i2++) {
+                //             for (int i1 = 0; i1 < node->ne[1]; i1++) {
+                //                 for (int i0 = 0; i0 < node->ne[0]; i0++) {
+                //                     char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
+                //                     // ggml_fp16_t inp = *((ggml_fp16_t *) p);
+                //                     float res = * (float *) p;
+                //                     // float res = ggml_fp16_to_fp32(inp);
+                //                     fprintf(file, "%f ", res);
+                //                 }
+                //                 fprintf(file, "\n");
+                //             }
+
+                //             // fprintf(file, "\n");
+                //         }
+
+                //         fclose(file);
+                //     }
+
+                //     count_target_tensor ++;
+                // }
+
+                // ==========
+                // 添加扰动
+
+                if (strcmp(node->name, TARGET_TENSOR_NAME) == 0) {
+                    for (int i2 = 0; i2 < node->ne[2]; i2++) {
+                        for (int i1 = 0; i1 < node->ne[1]; i1++) {
+                            for (int i0 = 0; i0 < node->ne[0]; i0++) {
+                                char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
+
+                                float *pd = (float *) p;
+
+                                if (*pd > -0.01f && *pd < 0.01f) {
+                                    float max_dis = 0.01;
+                                    float dis = (float) rand() / (float) RAND_MAX * max_dis * 2 - max_dis;
+                                    (*pd) += dis;
                                 }
-                                fprintf(file, "\n");
                             }
-
-                            fprintf(file, "\n");
                         }
-
-                        fclose(file);
                     }
-
-                    count_KQ ++;
                 }
+
+                // ==========
             }
 
             // distribute new work or execute it direct if 1T
