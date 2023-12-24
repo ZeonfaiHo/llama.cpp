@@ -81,6 +81,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import struct
 
 def calculate_max_proportions(file_path, tolerance):
     """
@@ -96,6 +97,8 @@ def calculate_max_proportions(file_path, tolerance):
     max_proportions = []
     col = 0
 
+    centers = {}
+
     for column in data.columns:
         if col % 10 == 0:
             print(col)
@@ -110,13 +113,14 @@ def calculate_max_proportions(file_path, tolerance):
             # 更新最大数量
             if count > max_count:
                 max_count = count
+                centers[column] = potential_center
 
         # 计算比例
         proportion = max_count / len(data[column])
         max_proportions.append(proportion)
 
-        if col == 1000:
-            break
+        # if col == 1000:
+        #     break
 
     # 创建横坐标（百分比）
     max_proportions.sort()
@@ -131,10 +135,15 @@ def calculate_max_proportions(file_path, tolerance):
     plt.grid(True)
     plt.savefig(file_path + '_tolerance_' + str(tolerance) + '.png')
 
+    with open(file_path + '_centers.bin', 'wb') as f:
+        for center in centers.values():
+            # 使用'f'格式化符号来表示单精度浮点数
+            f.write(struct.pack('f', center))
+
 # 替换成您的文件路径
 file_path = './inpFF'
 # 设置扰动范围
-tolerance = 0.0001  # 可以根据需要调整这个值
+tolerance = 0.1  # 可以根据需要调整这个值
 
 # 调用函数
 calculate_max_proportions(file_path, tolerance)
