@@ -18267,7 +18267,8 @@ static void ggml_graph_compute_perf_stats_node(struct ggml_tensor * node, const 
     node->perf_time_us += time_us_cur;
 }
 
-#define TARGET_TENSOR_NAME "silu"
+#define TARGET_TENSOR_NAME "ffn_norm"
+#define MAX_ITERATION 2
 
 static thread_ret_t ggml_graph_compute_thread(void * data) {
     struct ggml_compute_state * state = (struct ggml_compute_state *) data;
@@ -18315,42 +18316,49 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
                     static int iteration_id = 0;
                     static int layer_id = 0;
 
-                    printf("type enum: %d\n", node->type);
-                    for (int i = 0; i < node->n_dims; i++) {
-                        printf("%s_%d ne[%d]: %ld\n", TARGET_TENSOR_NAME, layer_id, i, node->ne[i]);
-                        // printf("inpFF_%d nb[%d]: %ld\n", count_inp_FF, i, node->nb[i]);
+                    if (iteration_id >= MAX_ITERATION) {
+                        // exit(0);
                     }
 
-                    if (iteration_id > 0 && layer_id == 16) {
-                        FILE *file = fopen(TARGET_TENSOR_NAME, "a");
-                        // if (file == NULL) {
-                        //     printf("Failed to open the file.\n");
-                        // }
+                    // printf("type enum: %d\n", node->type);
+                    // for (int i = 0; i < node->n_dims; i++) {
+                    //     printf("%s_%d ne[%d]: %ld\n", TARGET_TENSOR_NAME, layer_id, i, node->ne[i]);
+                    // }
 
-                        // fprintf(file, "type enum: %d\n", node->type);
+                    // // if (layer_id == 16) {
+                    // if (iteration_id != 0) {
+                    //     char filename[256];
+                    //     sprintf(filename, "%s_layer_%d", TARGET_TENSOR_NAME, layer_id);
+                    //     FILE *file = fopen(filename, "a");
+
+                    //     // if (file == NULL) {
+                    //     //     printf("Failed to open the file.\n");
+                    //     // }
+
+                    //     // fprintf(file, "type enum: %d\n", node->type);
 
 
-                        // for (int i = 0; i < node->n_dims; i++) {
-                        //     fprintf(file, "inpFF_%d ne[%d]: %ld\n", count_inp_FF, i, node->ne[i]);
-                        //     // fprintf(file, "inpFF_%d nb[%d]: %ld\n", count_inp_FF, i, node->nb[i]);
-                        // }
+                    //     // for (int i = 0; i < node->n_dims; i++) {
+                    //     //     fprintf(file, "inpFF_%d ne[%d]: %ld\n", count_inp_FF, i, node->ne[i]);
+                    //     //     // fprintf(file, "inpFF_%d nb[%d]: %ld\n", count_inp_FF, i, node->nb[i]);
+                    //     // }
 
 
-                        for (int i2 = 0; i2 < node->ne[2]; i2++) {
-                            for (int i1 = 0; i1 < node->ne[1]; i1++) {
-                                for (int i0 = 0; i0 < node->ne[0]; i0++) {
-                                    char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
-                                    // ggml_fp16_t inp = *((ggml_fp16_t *) p);
-                                    float res = * (float *) p;
-                                    // float res = ggml_fp16_to_fp32(inp);
-                                    fprintf(file, "%f ", res);
-                                }
-                                fprintf(file, "\n");
-                            }
-                        }
+                    //     for (int i2 = 0; i2 < node->ne[2]; i2++) {
+                    //         for (int i1 = 0; i1 < node->ne[1]; i1++) {
+                    //             for (int i0 = 0; i0 < node->ne[0]; i0++) {
+                    //                 char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
+                    //                 // ggml_fp16_t inp = *((ggml_fp16_t *) p);
+                    //                 float res = * (float *) p;
+                    //                 // float res = ggml_fp16_to_fp32(inp);
+                    //                 fprintf(file, "%f ", res);
+                    //             }
+                    //             fprintf(file, "\n");
+                    //         }
+                    //     }
 
-                        fclose(file);
-                    }
+                    //     fclose(file);
+                    // }
 
                 // ==========
                 // 添加扰动
@@ -18379,36 +18387,57 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
 
                 // =========
                     
-                //     // if (iteration_id > 0 && layer_id % 32 == 16) {
-                //     if (layer_id % 32 == 16) {
-                //         FILE *file;
-                //         file = fopen("centers.bin", "rb");
-                //         if (file == NULL) {
-                //             printf("Failed to open the file.\n");
-                //         }
+                    // if (iteration_id > 0 && layer_id % 32 == 16) {
+                    if (iteration_id != 0 && layer_id >= 16) {
+                        char filename[256];
+                        sprintf(filename, "%s_layer_%d_centers", TARGET_TENSOR_NAME, layer_id);
 
-                //         float *centers = (float *) malloc(4096 * sizeof (float));
-                //         fread(centers, sizeof (float), 4096, file);
+                        FILE *file_centers;
+                        file_centers = fopen(filename, "rb");
+                        if (file_centers == NULL) {
+                            printf("Failed to open centers file.\n");
+                        }
 
-                //         // printf("Read centers succeed\n");
+                        float *centers = (float *) malloc(4096 * sizeof (float));
+                        fread(centers, sizeof (float), 4096, file_centers);
 
-                //         for (int i2 = 0; i2 < node->ne[2]; i2++) {
-                //             for (int i1 = 0; i1 < node->ne[1]; i1++) {
-                //                 for (int i0 = 0; i0 < node->ne[0]; i0++) {
-                //                     char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
+                        sprintf(filename, "%s_tolerances", TARGET_TENSOR_NAME);
+                        FILE *file_tolerance;
+                        file_tolerance = fopen(filename, "rb");
+                        if (file_centers == NULL) {
+                            printf("Failed to open tolerance file.\n");
+                        }
 
-                //                     float *pd = (float *) p;
+                        float tols[32];
+                        fread(tols, sizeof (float), 32, file_tolerance);
+                        float tol = tols[layer_id] * 0.3;
 
-                //                     if (fabs((double) (*pd - centers[i0])) < 0.1) {
-                //                         *pd = centers[i0];
-                //                     }
-                //                 }
-                //             }
-                //         }
+                        // printf("Read centers succeed\n");
 
-                //         fclose(file);
-                //         free(centers);
-                //     }
+                        int sum = 0, cnt = 0;
+
+                        for (int i2 = 0; i2 < node->ne[2]; i2++) {
+                            for (int i1 = 0; i1 < node->ne[1]; i1++) {
+                                for (int i0 = 0; i0 < node->ne[0]; i0++) {
+                                    char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
+
+                                    float *pd = (float *) p;
+
+                                    if (fabs((double) (*pd - centers[i0])) < (double) tol) {
+                                        *pd = centers[i0];
+                                        cnt++;
+                                    }
+                                    sum++;
+                                }
+                            }
+                        }
+
+                        printf("%f\n", (double) cnt / sum);
+
+                        fclose(file_centers);
+                        fclose(file_tolerance);
+                        free(centers);
+                    }
 
                     layer_id++;
                     if (layer_id >= 32) {
