@@ -1,4 +1,6 @@
 *_centers
+activation-analysis/raw-activations/*
+activation-analysis/centers/*
 
 *.o
 *.a
