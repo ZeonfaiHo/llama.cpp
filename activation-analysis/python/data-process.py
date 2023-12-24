@@ -78,70 +78,44 @@ def calculate_median_centers(data):
         centers[column] = data[column].median()
     return centers
 
-def calculate_max_proportions_with_centers(data, centers, tolerance):
-    max_proportions = []
+def calculate_proportions_with_centers(data, centers, tolerance):
+    count = 0
     for column in data.columns:
         center = centers[column]
-        count = ((data[column] >= center - tolerance) &
+        count += ((data[column] >= center - tolerance) &
                  (data[column] <= center + tolerance)).sum()
-        proportion = count / len(data[column])
-        max_proportions.append(proportion)
-    return max_proportions
+    
+    proportion = count / data.size
+    return proportion
 
-def find_optimal_tolerance(data, target_proportion=0.8, lower_bound=0.0, upper_bound=10):
+def find_optimal_tolerance(data, target_proportion=0.7, lower_bound=0.0, upper_bound=10):
     centers = calculate_median_centers(data)
-    while upper_bound - lower_bound > 0.01:
+    # while upper_bound - lower_bound > 0.01:
+    while True:
         mid_tolerance = (lower_bound + upper_bound) / 2
 
         print('testing tolerance ' + str(mid_tolerance))
 
-        max_proportions = calculate_max_proportions_with_centers(data, centers, mid_tolerance)
-        columns_meeting_condition = np.sum(np.array(max_proportions) >= target_proportion)
-        proportion_of_columns = columns_meeting_condition / len(max_proportions)
+        proportion = calculate_proportions_with_centers(data, centers, mid_tolerance)
+        print('result: ' + str(proportion))
 
-        print('result: ' + str(proportion_of_columns))    
-
-        if 0.75 <= proportion_of_columns <= 0.85:
+        if target_proportion * 0.95 <= proportion <= target_proportion * 1.05:
             break
-        elif proportion_of_columns < 0.75:
+        elif proportion < target_proportion * 0.95:
             lower_bound = mid_tolerance
         else:
             upper_bound = mid_tolerance
 
     ret = (lower_bound + upper_bound) / 2
-    max_proportions = calculate_max_proportions_with_centers(data, centers, mid_tolerance)
-
-    for i in range(len(max_proportions)):
-        if max_proportions[i] < 0.8:
-            centers[i] = -1e9
-
     return ret
 
 def visualize_and_save(data, tolerance, file_name):
     centers = calculate_median_centers(data)
-    max_proportions = calculate_max_proportions_with_centers(data, centers, tolerance)
-    max_proportions = calculate_max_proportions_with_centers(data, centers, tolerance)
-    x_labels = np.linspace(0, 100, len(max_proportions))
-
-    plt.figure(figsize=(12, 6))
-    plt.plot(x_labels, sorted(max_proportions))
-    plt.xlabel('Sorted Columns')
-    plt.ylabel(f'Maximum Proportion Within ±{tolerance}')
-    plt.title(f'Maximum Proportion of Elements Within ±{tolerance} of Center Value for Each Column')
-    plt.grid(True)
-    plt.savefig('./visualization/' + file_name + '_tolerance_' + str(tolerance) + '.png')
-
-    # with open('./centers/' + file_name + '_tolerance_' + str(tolerance) + '_centers', 'wb') as f:
-
-    for i in range(len(max_proportions)):
-        if max_proportions[i] < 0.8:
-            centers[i] = -1e9
-
     with open('./centers/' + file_name + '_centers', 'wb') as f:
         for center in centers.values():
             f.write(struct.pack('f', center))
 
-activation_name = 'ffn_norm'
+activation_name = 'silu_x_result_w3'
 
 with open(activation_name + '_tolerances', 'wb') as tolerance_file:
     for i in range(32):
