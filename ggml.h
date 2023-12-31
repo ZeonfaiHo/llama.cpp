@@ -2195,7 +2195,7 @@ extern "C" {
 
     // ==========
 
-    GGML_API void ggml_print_tensor(struct ggml_tensor *tensor);
+    GGML_API void ggml_print_tensor(struct ggml_tensor *tensor, int save_to_file);
 
     // ==========
 

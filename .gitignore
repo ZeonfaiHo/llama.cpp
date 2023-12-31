@@ -3,6 +3,7 @@ tensor-analysis/raw-activations/*
 tensor-analysis/centers/*
 tensor-analysis/tolerances/*
 tensor-analysis/weights/*
+tensor-analysis/importance/*
 tensor-analysis/visualization/*
 
 *.o

@@ -16316,7 +16316,7 @@ static int ggml_get_n_tasks(struct ggml_tensor * node, int n_threads) {
     return n_tasks;
 }
 
-#define TARGET_TENSOR_NAME "ffn_gate_par"
+#define TARGET_TENSOR_NAME "ffn_norm"
 // #define MAX_ITERATION 2
 
 static thread_ret_t ggml_graph_compute_thread(void * data) {
@@ -16372,11 +16372,7 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
                     // ===========
                     // 打印基本信息
 
-                    // printf("type enum: %d\n", node->type);
-
-                    // for (int i = 0; i < 4; i++) {
-                    //     printf("%s ne[%d]: %ld\n", node->name, i, node->ne[i]);
-                    // }
+                    ggml_print_tensor(node, false);
 
                     // ==========
                     // 打印激活值
@@ -19783,11 +19779,16 @@ void replace_dots_with_underscores(char *str) {
     }
 }
 
-void ggml_print_tensor(struct ggml_tensor *tensor) {
+void ggml_print_tensor(struct ggml_tensor *tensor, int save_to_file) {
+
     printf("name: %s\ntype: %d\n", tensor->name, tensor->type);
 
     for (int i = 0; i < 4; i++) {
-        printf("ne[%d]: %ld\n%s nb[%d]: %ld\n", i, tensor->ne[i], tensor->name, i, tensor->nb[i]);
+        printf("ne[%d]: %ld\nnb[%d]: %ld\n", i, tensor->ne[i], i, tensor->nb[i]);
+    }
+
+    if (!save_to_file) {
+        return;
     }
 
     char filename[256];
@@ -19807,7 +19808,7 @@ void ggml_print_tensor(struct ggml_tensor *tensor) {
     int ne1 = tensor->ne[1], nb1 = tensor->nb[1];
     int ne0 = tensor->ne[0], nb0 = tensor->nb[0];
 
-    float *out = (float *) malloc(4096 * sizeof (float));
+    float *out = (float *) malloc(ne0 * sizeof (float));
 
     for (int i3 = 0; i3 < ne3; i3++) {
         for (int i2 = 0; i2 < ne2; i2++) {
@@ -19825,6 +19826,7 @@ void ggml_print_tensor(struct ggml_tensor *tensor) {
     }
 
     fclose(file);
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
