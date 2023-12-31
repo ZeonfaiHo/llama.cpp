@@ -18387,10 +18387,11 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
 
                     // =========
                     
+                    // 固化激活值
                     // if (iteration_id != 0 && layer_id >= 16) {
                     if (iteration_id != 0) {
                         char filename[256];
-                        sprintf(filename, "%s_layer_%d_centers", TARGET_TENSOR_NAME, layer_id);
+                        sprintf(filename, "./activation-analysis/centers/%s_layer_%d_centers", TARGET_TENSOR_NAME, layer_id);
 
                         FILE *file_centers;
                         file_centers = fopen(filename, "rb");
@@ -18401,7 +18402,7 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
                         float *centers = (float *) malloc(4096 * sizeof (float));
                         fread(centers, sizeof (float), 4096, file_centers);
 
-                        sprintf(filename, "%s_tolerances", TARGET_TENSOR_NAME);
+                        sprintf(filename, "./activation-analysis/tolerances/%s_tolerances", TARGET_TENSOR_NAME);
                         FILE *file_tolerance;
                         file_tolerance = fopen(filename, "rb");
                         if (file_centers == NULL) {

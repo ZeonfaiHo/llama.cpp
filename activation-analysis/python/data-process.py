@@ -117,7 +117,7 @@ def visualize_and_save(data, tolerance, file_name):
 
 activation_name = 'silu_x_result_w3'
 
-with open(activation_name + '_tolerances', 'wb') as tolerance_file:
+with open('./tolerances/' + activation_name + '_tolerances', 'wb') as tolerance_file:
     for i in range(32):
         file_name = activation_name + '_layer_' + str(i)
         print('processing ' + file_name)
