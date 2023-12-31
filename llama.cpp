@@ -4133,14 +4133,17 @@ static struct ggml_tensor * llm_build_ffn(
          const llm_build_cb & cb,
                         int   il) {
 
+    // ==========
 
     // if (il == 16) {
-    ggml_print_tensor(down, true);
+    // ggml_print_tensor(down, true);
     // }
 
-    if (il == 31) {
-        exit(0);
-    }
+    // if (il == 31) {
+    //     exit(0);
+    // }
+
+    // ==========
 
     struct ggml_tensor * tmp = ggml_mul_mat(ctx, up, cur);
     cb(tmp, "ffn_up", il);

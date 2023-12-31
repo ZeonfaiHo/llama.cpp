@@ -16372,7 +16372,7 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
                     // ===========
                     // 打印基本信息
 
-                    ggml_print_tensor(node, false);
+                    // ggml_print_tensor(node, false);
 
                     // ==========
                     // 打印激活值
