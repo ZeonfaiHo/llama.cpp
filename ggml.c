@@ -16316,8 +16316,10 @@ static int ggml_get_n_tasks(struct ggml_tensor * node, int n_threads) {
     return n_tasks;
 }
 
-#define TARGET_TENSOR_NAME "ffn_norm"
+#define TARGET_TENSOR_NAME "ffn_gate_par"
 // #define MAX_ITERATION 2
+// #define TARGET_OUT_TENSOR_NAME "result_output"
+#define USE_MASKS
 
 static thread_ret_t ggml_graph_compute_thread(void * data) {
     struct ggml_compute_state * state = (struct ggml_compute_state *) data;
@@ -16359,9 +16361,17 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
                 // ==========
                 // 激活值处理
 
+#ifdef TARGET_TENSOR_NAME
+
+                static int iteration_id = -1;
+                static int layer_id = 31;
+
                 if (strstr(node->name, TARGET_TENSOR_NAME) != NULL) {
-                    static int iteration_id = 0;
-                    static int layer_id = 0;
+                    layer_id++;
+                    if (layer_id >= 32) {
+                        iteration_id++;
+                        layer_id %= 32;
+                    }
 
 #ifdef MAX_ITERATION
                     if (iteration_id >= MAX_ITERATION) {
@@ -16431,64 +16441,89 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
                     // =========
                     
                     // 固化激活值
-                    // if (iteration_id != 0 && layer_id >= 16) {
-                    // if (iteration_id != 0) {
-                    //     char filename[256];
-                    //     sprintf(filename, "./tensor-analysis/centers/%s_layer_%d_centers", TARGET_TENSOR_NAME, layer_id);
+                    if (iteration_id != 0) {
+                        // printf("Sparsifying %s\n", node->name);
 
-                    //     FILE *file_centers;
-                    //     file_centers = fopen(filename, "rb");
-                    //     if (file_centers == NULL) {
-                    //         printf("Failed to open centers file.\n");
-                    //     }
+                        char filename[256];
+                        sprintf(filename, "./tensor-analysis/centers/%s_centers", node->name);
 
-                    //     float *centers = (float *) malloc(4096 * sizeof (float));
-                    //     fread(centers, sizeof (float), 4096, file_centers);
+                        FILE *file_centers;
+                        file_centers = fopen(filename, "rb");
+                        if (file_centers == NULL) {
+                            printf("Failed to open centers file.\n");
+                        }
 
-                    //     sprintf(filename, "./tensor-analysis/tolerances/%s_tolerances", TARGET_TENSOR_NAME);
-                    //     FILE *file_tolerance;
-                    //     file_tolerance = fopen(filename, "rb");
-                    //     if (file_centers == NULL) {
-                    //         printf("Failed to open tolerance file.\n");
-                    //     }
+                        float *centers = (float *) malloc(node->ne[0] * sizeof (float));
+                        fread(centers, sizeof (float), node->ne[0], file_centers);
 
-                    //     float tols[32];
-                    //     fread(tols, sizeof (float), 32, file_tolerance);
-                    //     float tol = tols[layer_id];
+                        sprintf(filename, "./tensor-analysis/tolerances/%s_tolerances", TARGET_TENSOR_NAME);
+                        FILE *file_tolerance;
+                        file_tolerance = fopen(filename, "rb");
+                        if (file_centers == NULL) {
+                            printf("Failed to open tolerance file.\n");
+                        }
 
-                    //     // printf("Read centers succeed\n");
+                        float tols[32];
+                        fread(tols, sizeof (float), 32, file_tolerance);
+                        float tol = tols[layer_id];
 
-                    //     int sum = 0, cnt = 0;
+                        sprintf(filename, "./tensor-analysis/masks/%s_masks", node->name);
+                        FILE *file_masks;
+                        file_masks = fopen(filename, "rb");
+                        if (file_masks == NULL) {
+                            printf("Failed to open masks file\n");
+                        }
 
-                    //     for (int i2 = 0; i2 < node->ne[2]; i2++) {
-                    //         for (int i1 = 0; i1 < node->ne[1]; i1++) {
-                    //             for (int i0 = 0; i0 < node->ne[0]; i0++) {
-                    //                 char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
+                        char *masks = (char *) malloc(node->ne[0] * sizeof (char));
+                        fread(masks, sizeof (char), node->ne[0], file_masks);
 
-                    //                 float *pd = (float *) p;
+                        int sum = 0, cnt = 0;
 
-                    //                 if (fabs((double) (*pd - centers[i0])) < (double) tol) {
-                    //                     *pd = centers[i0];
-                    //                     cnt++;
-                    //                 }
-                    //                 sum++;
-                    //             }
-                    //         }
-                    //     }
+                        for (int i2 = 0; i2 < node->ne[2]; i2++) {
+                            for (int i1 = 0; i1 < node->ne[1]; i1++) {
+                                for (int i0 = 0; i0 < node->ne[0]; i0++) {
+                                    char *p = (char *) (node->data) + node->nb[2] * i2 + node->nb[1] * i1 + node->nb[0] * i0;
 
-                    //     // printf("%f\n", (double) cnt / sum);
+                                    float *pd = (float *) p;
 
-                    //     fclose(file_centers);
-                    //     fclose(file_tolerance);
-                    //     free(centers);
-                    // }
+#ifdef USE_MASKS
+                                    if (masks[i0] && fabs((double) (*pd - centers[i0])) < (double) tol) {
+#else
+                                    if (fabs((double) (*pd - centers[i0])) < (double) tol) {
+#endif
+                                        *pd = centers[i0];
+                                        cnt++;
+                                    }
+                                    sum++;
+                                }
+                            }
+                        }
 
-                    layer_id++;
-                    if (layer_id >= 32) {
-                        iteration_id++;
-                        layer_id %= 32;
+                        // printf("Fixed proportion: %f\n", (double) cnt / sum);
+
+                        fclose(file_centers);
+                        fclose(file_tolerance);
+                        free(centers);
                     }
                 }
+
+#endif
+
+#ifdef TARGET_OUT_TENSOR_NAME
+
+                // ==========
+
+                // 打印被动变化的激活
+                if (strstr(node->name, TARGET_OUT_TENSOR_NAME) != NULL) {
+                    // if (layer_id == 31) {
+                    //     ggml_print_tensor(node, true);
+                    // } else {
+                    //     ggml_print_tensor(node, false);
+                    // }
+                    ggml_print_tensor(node, true);
+                }
+#endif
+
                 // ==========
             }
 
@@ -19808,13 +19843,21 @@ void ggml_print_tensor(struct ggml_tensor *tensor, int save_to_file) {
     int ne1 = tensor->ne[1], nb1 = tensor->nb[1];
     int ne0 = tensor->ne[0], nb0 = tensor->nb[0];
 
-    float *out = (float *) malloc(ne0 * sizeof (float));
+    float *out;
+    
+    if (to_float != NULL ) {
+        (float *) malloc(ne0 * sizeof (float));
+    }
 
     for (int i3 = 0; i3 < ne3; i3++) {
         for (int i2 = 0; i2 < ne2; i2++) {
             for (int i1 = 0; i1 < ne1; i1++) {
                 size_t offset = i3 * nb3 + i2 * nb2 + i1 * nb1;
-                to_float((char *)(tensor->data) + offset, out, ne0);
+                if (to_float != NULL) {
+                    to_float((char *)(tensor->data) + offset, out, ne0);
+                } else {
+                    out = (char *) (tensor->data) + offset;
+                }
 
                 for (int i0 = 0; i0 < ne0; i0++) {
                     fprintf(file, "%f ", (double) out[i0]);
@@ -19826,6 +19869,10 @@ void ggml_print_tensor(struct ggml_tensor *tensor, int save_to_file) {
     }
 
     fclose(file);
+
+    if (to_float != NULL) {
+        free(out);
+    }
 
 }
 

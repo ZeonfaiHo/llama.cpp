@@ -2,32 +2,34 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# 计算向量 X 的每个位置的重要性
 def calculate_importance(W):
     importance = np.linalg.norm(W, axis=0)
     return importance
 
+def calculate_mask(importance, percentile=80):
+    threshold = np.percentile(importance, percentile)
+    mask = importance < threshold
+    return mask
+
 def main():
     for i in range(32):
-        tensor_name = 'ffn_down'
-        df = pd.read_csv('./weights/blk_' + str(i) + '_' + tensor_name + '_weight', sep='\s+', header=None)
+        weight_tensor_name = 'blk_' + str(i) + '_' + 'ffn_down'
+        activation_tensor_name = f'ffn_gate_par-{i}'
+        df = pd.read_csv('./weights/' + weight_tensor_name + '_weight', sep='\s+', header=None)
 
-        # 将 DataFrame 转换为 NumPy 数组
         W = df.values
 
-        # if W.shape != (14336, 4096):
         if W.shape != (4096, 14336):
             raise ValueError('Tensor shape incorrect!!')
 
         importance = calculate_importance(W)
-
-        # 打印重要性向量
         print('Importance vector:\n', importance)
 
-        # 将重要性向量保存为二进制浮点数数组
-        importance.tofile('./importance/' + 'blk_' + str(i) + '_' + tensor_name + '_importance')
+        importance.tofile('./importance/' + activation_tensor_name + '_importance')
 
-        # 排序重要性数值并绘图
+        mask = calculate_mask(importance)
+        mask.astype(np.int8).tofile('./masks/' + activation_tensor_name + '_masks')  # 保存mask数组
+
         sorted_importance = np.sort(importance)
         
         plt.figure(figsize=(10, 6))
@@ -36,7 +38,7 @@ def main():
         plt.xlabel('Index (sorted)')
         plt.ylabel('Importance')
         plt.grid(True)
-        plt.savefig('./visualization/importance_distribution.png')  # 保存图像
+        plt.savefig('./visualization/' + activation_tensor_name + '_importance.png')
 
 if __name__ == '__main__':
     main()
